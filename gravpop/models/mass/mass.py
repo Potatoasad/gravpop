@@ -20,7 +20,9 @@ class SmoothedTwoComponentPrimaryMassRatio:
         self.gaussian_mass_maximum = gaussian_mass_maximum
         self.mmin_fixed = 2
         self.mmax_fixed = 100
-        print("Note: SmoothedTwoComponentPrimaryMassRatio is an unnormalized distribution. Be wary when using these for infering merger rates")
+        print("""Note: SmoothedTwoComponentPrimaryMassRatio is an unnormalized distribution. 
+            Be wary when using these for infering merger rates. 
+            In addition, this model might have a different primary mass marginal due to this lack of normalization in q""")
 
     def __call__(self, data, params):
         # Get params

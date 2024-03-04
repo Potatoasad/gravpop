@@ -4,3 +4,6 @@ astropy
 numpy
 scipy
 pandas
+corner
+matplotlib
+numpyro

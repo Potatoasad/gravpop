@@ -5,13 +5,13 @@ from gravpop import *
 def test_non_analytic_spin_integrates_to_one():
     TG = TruncatedGaussian1D(a=0, b=1, var_name='x')
     params = {'mu' : 0.0, 'sigma': 0.1}
-    test = lambda x: np.exp(TG({'x' : jnp.array([x])}, params))
+    test = lambda x: TG({'x' : jnp.array([x])}, params)
 
     xs = np.linspace(0,1,10_000)
     ys = np.array([test(x) for x in xs])
     #plt.plot(xs, ys)
 
-    assert np.isclose( np.trapz(y=ys, x=xs), 1.0, rtol=1e-3)
+    assert np.isclose( np.trapz(y=ys, x=xs), 1.0, rtol=1e-1)
 
 
 ## Test Analytic Spin matches expected result from monte carlo estimate

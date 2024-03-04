@@ -29,8 +29,8 @@ class TruncatedGaussian1D:
     def __call__(self, data, params):
         Xs, mu, sigma = self.get_data(data, params);
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
-        loglikes = jnp.log(truncnorm(Xs, mu, sigma, low=self.a, high=self.b).mean(axis=-1))
-        return loglikes
+        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b).mean(axis=-1)
+        return prob
 
 
 
@@ -100,4 +100,4 @@ class TruncatedGaussian1DAnalytic:
     def __call__(self, data, params):
         X_locations, X_scales, mu, sigma = self.get_data(data, params);
         loglikes = loglikelihood_kernel1d(X_locations, X_scales, mu, sigma, self.a, self.b)
-        return loglikes
+        return jnp.exp(loglikes)

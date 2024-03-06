@@ -1,4 +1,5 @@
 from ..utils import *
+from ..generic import AbstractPopulationModel
 import jax.numpy as jnp
 import jax
 
@@ -15,7 +16,7 @@ def two_component_single(mass, alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass
     prob = (1 - lam) * p_pow + lam * p_norm
     return prob
 
-class SmoothedTwoComponentPrimaryMassRatio:
+class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
     def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100):
         self.gaussian_mass_maximum = gaussian_mass_maximum
         self.mmin_fixed = 2

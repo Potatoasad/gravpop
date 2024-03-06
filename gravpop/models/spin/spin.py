@@ -1,8 +1,9 @@
 import jax
 import jax.numpy as jnp
 from ..utils import *
+from ..generic import *
 
-class TruncatedGaussian1D:
+class TruncatedGaussian1D(AbstractPopulationModel):
     r"""
     Truncated Gaussian Distribution. Performs a monte carlo estimate of the population likelihood. 
 

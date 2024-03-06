@@ -3,8 +3,9 @@ import jax.numpy as jnp
 import numpy as np
 import astropy
 from astropy.cosmology import Planck15
+from ..generic import AbstractPopulationModel
 
-class Redshift:
+class Redshift(AbstractPopulationModel):
     """A class representing redshifts and their associated probability distributions.
 
     Attributes:

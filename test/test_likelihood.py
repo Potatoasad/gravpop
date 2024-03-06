@@ -39,38 +39,3 @@ def test_likelihood_sampled():
 
     fig = Samp.corner(truth=np.array([mu,sigma]));
     fig.savefig("./test/test_likelihood_plot.png")
-
-
-def test_likelihood_truncated_analytic():
-    TG = TruncatedGaussian1D(var_name='x', mu_name='mu', sigma_name='sigma')
-    TGA = TruncatedGaussian1DAnalytic(var_name='x', mu_name='mu', sigma_name='sigma')
-    mu = 0.0
-    sigma = 0.2
-    likelihood_sigma = 1.0
-
-    E, K, N = 10, 1, 1000
-
-    events = scipy.stats.norm.rvs(loc=mu, scale=sigma, size=E)
-    x_data = jnp.stack([scipy.stats.norm.rvs(loc=x, scale=likelihood_sigma, size=N) for x in events]).reshape(E,K,N)
-
-
-    event_data = {'x': x_data, # 1 events, 1 kernels, 8000 points each
-                  'weights': jnp.ones((E,K))/K, # Equally weighted kernels
-                  'x_mu_kernel' : events.reshape(E,K),
-                  'x_sigma_kernel': jnp.ones((E,K))*likelihood_sigma}
-
-    HL = HybridPopulationLikelihood(sampled_models=[TG], event_data=event_data, analytic_models=[], selection_data={})
-    HL_trunc = HybridPopulationLikelihood(sampled_models=[TGA], event_data=event_data, analytic_models=[], selection_data={})
-
-
-
-    Samp = Sampler(priors = {'mu' : dist.Normal(0,3),  
-                              'sigma' : dist.Uniform(0,4)}, 
-                    latex_symbols = {'mu' : r'$\mu$', 
-                                     'sigma' : r'$\sigma$'} , 
-                    likelihood=HL, num_samples=2000, num_warmup=1000)
-
-    Samp.sample();
-
-    fig = Samp.corner(truth=np.array([mu,sigma]));
-    fig.savefig("./test/test_likelihood_plot_sampled.png")

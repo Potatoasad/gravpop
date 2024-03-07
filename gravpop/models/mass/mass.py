@@ -17,10 +17,12 @@ def two_component_single(mass, alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass
     return prob
 
 class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
-    def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100):
+    def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100, primary_mass_name="mass_1", mass_ratio_name="mass_ratio"):
         self.gaussian_mass_maximum = gaussian_mass_maximum
         self.mmin_fixed = 2
         self.mmax_fixed = 100
+        self.primary_mass_name = primary_mass_name
+        self.mass_ratio_name = mass_ratio_name
         print("""Note: SmoothedTwoComponentPrimaryMassRatio is an unnormalized distribution. 
             Be wary when using these for infering merger rates. 
             In addition, this model might have a different primary mass marginal due to this lack of normalization in q""")
@@ -37,15 +39,15 @@ class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
         delta_m = params.get("delta_m", 0)
 
         # Compute primary mass unnormalized distribution with smoothing
-        p_m1 = two_component_single(data["mass_1"],  alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass_maximum=self.gaussian_mass_maximum)
-        p_m1 *= smoothing(data['mass_1'], mmin, mmax, delta_m)
+        p_m1 = two_component_single(data[self.primary_mass_name],  alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass_maximum=self.gaussian_mass_maximum)
+        p_m1 *= smoothing(data[self.primary_mass_name], mmin, mmax, delta_m)
 
         # Compute mass_ratio unnormalized distribution with smoothing
-        p_q = powerlaw(data["mass_ratio"], beta, 1, mmin / data["mass_1"])
+        p_q = powerlaw(data[self.mass_ratio_name], beta, 1, mmin / data[self.primary_mass_name])
         p_q *= smoothing(
-            data["mass_1"] * data["mass_ratio"],
+            data[self.primary_mass_name] * data[self.mass_ratio_name],
             mmin=mmin,
-            mmax=data["mass_1"],
+            mmax=data[self.primary_mass_name],
             delta_m=delta_m,
         )
 

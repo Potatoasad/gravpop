@@ -9,6 +9,16 @@ import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
 
+from numpyro.infer import (
+    MCMC,
+    NUTS,
+    init_to_feasible,
+    init_to_median,
+    init_to_sample,
+    init_to_uniform,
+    init_to_value,
+)
+
 import pandas as pd
 
 import corner
@@ -16,7 +26,7 @@ import corner
 @dataclass
 class Sampler:
     priors : Dict[str, dist.Distribution]
-    latex_symbols : Dict[str, dist.Distribution]
+    latex_symbols : Dict[str, str]
     likelihood : Any = field(repr=False)
     num_samples : int = 2000
     num_warmup : int = 1000
@@ -43,7 +53,7 @@ class Sampler:
         rng_key, rng_key_ = jax.random.split(rng_key)
 
         # Run NUTS.
-        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob)
+        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob, init_strategy=init_to_median(num_samples=10))
         num_samples = self.num_samples
         mcmc = MCMC(kernel, num_warmup=self.num_warmup, num_samples=num_samples)
         mcmc.run(rng_key_)

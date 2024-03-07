@@ -37,10 +37,10 @@ class Redshift(AbstractPopulationModel):
         self.hyper_var_name = 'lamb'
         self.lamb_min = lamb_min
         self.lamb_max = lamb_max
-        self.lambs = np.linspace(self.lamb_min, self.lamb_max, 1000)
+        self.lambs = jnp.linspace(self.lamb_min, self.lamb_max, 1000)
         self._precomputed_normalization = None
         
-        self.zs = np.linspace(0, z_max, 1000)
+        self.zs = jnp.linspace(0, z_max, 1000)
         self.dVdz_values = Planck15.differential_comoving_volume(self.zs).value * 4 * np.pi
 
     def dVdz(self, data):
@@ -52,7 +52,7 @@ class Redshift(AbstractPopulationModel):
         Returns:
             numpy.ndarray: Array of differential comoving volume values.
         """
-        return np.interp(data[self.var_name], self.zs, self.dVdz_values)
+        return jnp.interp(data[self.var_name], self.zs, self.dVdz_values)
 
     def _normalization(self, params):
         """Compute the normalization factor.
@@ -70,7 +70,7 @@ class Redshift(AbstractPopulationModel):
     def precomputed_normalization_array(self):
         """Precompute the normalization array."""
         if self._precomputed_normalization is None:
-            self._precomputed_normalization = np.array([self._normalization({'lamb':lamb}) for lamb in self.lambs])
+            self._precomputed_normalization = jnp.array([self._normalization({'lamb':lamb}) for lamb in self.lambs])
             return self._precomputed_normalization
         else:
             return self._precomputed_normalization
@@ -85,7 +85,7 @@ class Redshift(AbstractPopulationModel):
             float: Normalization factor.
         """
         norms = self.precomputed_normalization_array()
-        return np.interp(params[self.hyper_var_name], self.lambs, norms)
+        return jnp.interp(params[self.hyper_var_name], self.lambs, norms)
 
     def probability(self, data, params):
         """Compute the probability distribution.
@@ -99,8 +99,9 @@ class Redshift(AbstractPopulationModel):
         """
         normalisation = self.normalization(params)
         prob = self.dVdz(data) * self.psi_of_z(data, params) / (1 + data[self.var_name])
-        in_bounds = np.less(data[self.var_name], self.z_max)
-        return (prob  / normalisation) * in_bounds
+        in_bounds = jnp.less(data[self.var_name], self.z_max)
+        #return (prob  / normalisation) * in_bounds
+        return prob * in_bounds
 
     def __call__(self, data, params):
         """Call the probability method.

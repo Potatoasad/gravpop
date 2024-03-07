@@ -17,7 +17,7 @@ class HybridPopulationLikelihood:
     def __post_init__(self):
         if not ('weights' in self.event_data):
             raise ValueError("Expected 'weights' key in the event_data dictionary")
-        self.N_events = self.event_data['weights'].shape[-1]
+        self.N_events = self.event_data['weights'].shape[0]
     
     @staticmethod
     def log(x):
@@ -31,15 +31,16 @@ class HybridPopulationLikelihood:
     def analytic_event_bayes_factors(self, data, params):
         if len(self.analytic_models) == 0:
             return 0.0
-        loglikes = sum(jnp.log(model(data, params)) for model in self.analytic_models) # E x K
+        loglikes = sum(self.log(model(data, params)) for model in self.analytic_models) # E x K
         return self.aggregate_kernels(data, loglikes)
     
     def sampled_event_bayes_factors(self, data, params):
         if len(self.sampled_models) == 0:
             return 0.0
-        loglikes = sum(jnp.log(model(data, params)) for model in self.sampled_models) # E x K x N
+        loglikes = sum(self.log(model(data, params)) for model in self.sampled_models) # E x K x N
         N = loglikes.shape[-1]
-        loglikes = jax.scipy.special.logsumexp( loglikes ) - jnp.log(N)
+        log_priors = self.log(data["prior"])
+        loglikes = jax.scipy.special.logsumexp( loglikes - log_priors) - jnp.log(N)
         return self.aggregate_kernels(data, loglikes)
     
     def logpdf(self, params):

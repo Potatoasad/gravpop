@@ -21,7 +21,7 @@ class HybridPopulationLikelihood:
     
     @staticmethod
     def log(x):
-        return jnp.log(x + 1e-14)
+        return jnp.log(x + 1e-10)
     
     @staticmethod
     def aggregate_kernels(data, loglikes):
@@ -40,7 +40,7 @@ class HybridPopulationLikelihood:
         loglikes = sum(self.log(model(data, params)) for model in self.sampled_models) # E x K x N
         N = loglikes.shape[-1]
         log_priors = self.log(data["prior"])
-        loglikes = jax.scipy.special.logsumexp( loglikes - log_priors) - jnp.log(N)
+        loglikes = jax.scipy.special.logsumexp( loglikes - log_priors, axis=-1) - jnp.log(N)
         return self.aggregate_kernels(data, loglikes)
     
     def logpdf(self, params):

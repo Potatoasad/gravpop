@@ -16,7 +16,7 @@ def powerlaw(x, alpha, high, low):
         1 / jnp.log(high / low),
         (1 + alpha) / jnp.array(high ** (1 + alpha) - low ** (1 + alpha)),
     )
-    prob = jnp.power(x, alpha)*norm/box(x, low, high)
+    prob = jnp.power(x, alpha)*norm*box(x, low, high)
     return prob
 
 @jit

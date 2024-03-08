@@ -4,6 +4,7 @@ import numpy as np
 import astropy
 from astropy.cosmology import Planck15
 from ..generic import AbstractPopulationModel
+from ..utils import box
 
 class Redshift(AbstractPopulationModel):
     """A class representing redshifts and their associated probability distributions.
@@ -97,11 +98,14 @@ class Redshift(AbstractPopulationModel):
         Returns:
             numpy.ndarray: Array of probability values.
         """
-        normalisation = self.normalization(params)
+        normalisation = self._normalization(params)
         prob = self.dVdz(data) * self.psi_of_z(data, params) / (1 + data[self.var_name])
-        in_bounds = jnp.less(data[self.var_name], self.z_max)
+        in_bounds = box(data[self.var_name], 0, self.z_max)
         #return (prob  / normalisation) * in_bounds
-        return prob * in_bounds
+        #print(prob, in_bounds,normalisation)
+        #print(prob *in_bounds / normalisation)
+        return prob *in_bounds / normalisation
+        #return prob * in_bounds# * jnp.abs(params[self.hyper_var_name])
 
     def __call__(self, data, params):
         """Call the probability method.
@@ -113,7 +117,7 @@ class Redshift(AbstractPopulationModel):
         Returns:
             numpy.ndarray: Array of probability values.
         """
-        return self.probability(data, params)
+        return jnp.nan_to_num(self.probability(data, params),nan=0)
 
 
 class PowerLawRedshift(Redshift):

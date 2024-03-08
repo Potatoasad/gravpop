@@ -23,6 +23,9 @@ import pandas as pd
 
 import corner
 
+import numpyro
+
+
 @dataclass
 class Sampler:
     priors : Dict[str, dist.Distribution]
@@ -34,7 +37,7 @@ class Sampler:
     target_accept_prob : float = 0.9
     summary : bool = True
     return_samples : bool = False
-    
+    validation : bool = True
     
     def __post_init__(self):
         self.x = {}
@@ -52,8 +55,11 @@ class Sampler:
         rng_key = jax.random.PRNGKey(self.seed)
         rng_key, rng_key_ = jax.random.split(rng_key)
 
+        numpyro.enable_validation(True)
+
         # Run NUTS.
-        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob, init_strategy=init_to_median(num_samples=10))
+        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob)
+            #, init_strategy=init_to_sample())
         num_samples = self.num_samples
         mcmc = MCMC(kernel, num_warmup=self.num_warmup, num_samples=num_samples)
         mcmc.run(rng_key_)

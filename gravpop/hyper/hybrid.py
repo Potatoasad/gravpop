@@ -39,7 +39,10 @@ class HybridPopulationLikelihood:
             return 0.0
         loglikes = sum(self.log(model(data, params)) for model in self.sampled_models) # E x K x N
         N = loglikes.shape[-1]
-        log_priors = self.log(data["prior"])
+        if "prior" not in data.keys():
+            log_priors = 0
+        else:
+            log_priors = self.log(data["prior"])
         loglikes = jax.scipy.special.logsumexp( loglikes - log_priors, axis=-1) - jnp.log(N)
         return self.aggregate_kernels(data, loglikes)
     

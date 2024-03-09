@@ -3,12 +3,15 @@ from ..generic import AbstractPopulationModel
 import jax.numpy as jnp
 import jax
 
-def smoothing(masses, mmin, mmax, delta_m):
+def _smoothing(masses, mmin, mmax, delta_m):
     shifted_mass = jnp.nan_to_num((masses - mmin) / delta_m, nan=0)
     shifted_mass = jnp.clip(shifted_mass, 1e-6, 1 - 1e-6)
     exponent = 1 / shifted_mass - 1 / (1 - shifted_mass)
     window = jax.scipy.special.expit(-exponent)
     return window*box(masses, mmin, mmax)
+
+def smoothing(masses, mmin, mmax, delta_m):
+    return jnp.where(delta_m > 0.0,  _smoothing(masses, mmin, mmax, delta_m), jnp.ones_like(masses))
 
 def two_component_single(mass, alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass_maximum=100):
     p_pow = powerlaw(mass, alpha=-alpha, high=mmax, low=mmin)

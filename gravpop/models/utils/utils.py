@@ -7,7 +7,7 @@ from jax import jit
 
 @jit
 def box(x,a,b):
-    return jnp.where(x > a, jnp.where(x < b, jnp.ones_like(x), jnp.zeros_like(x)), jnp.zeros_like(x))
+    return jnp.where(x >= a, jnp.where(x <= b, jnp.ones_like(x), jnp.zeros_like(x)), jnp.zeros_like(x))
 
 @jit
 def powerlaw(x, alpha, high, low):

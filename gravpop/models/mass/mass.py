@@ -29,6 +29,7 @@ class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
         self.m1s = jnp.linspace(mmin_fixed, mmax_fixed, normalization_shape[0])
         self.qs = jnp.linspace(0, 1, normalization_shape[1])
         self.m1s_grid, self.qs_grid = jnp.meshgrid(self.m1s, self.qs)
+        self.mass_ratio_norm_clip_threshold = 1e-16
         #print("""Note: SmoothedTwoComponentPrimaryMassRatio is an unnormalized distribution. 
         #    Be wary when using these for infering merger rates. 
         #    In addition, this model might have a different primary mass marginal due to this lack of normalization in q""")
@@ -45,7 +46,8 @@ class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
             jnp.ones(self.m1s.shape),
         )
 
-        return jnp.interp(data[self.primary_mass_name], self.m1s, norms)
+        result = jnp.interp(data[self.primary_mass_name], self.m1s, norms)
+        return jnp.clip(result, self.mass_ratio_norm_clip_threshold)  # For preventing 1/0 at masses that are below mmin
 
     def norm_p_m1(self, delta_m, **kwargs):
         """Calculate the normalisation factor for the primary mass"""

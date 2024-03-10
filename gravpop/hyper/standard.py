@@ -1,11 +1,13 @@
 import jax
 import jax.numpy as jnp
+from jax import jit
 from ..models.utils import *
 
 
 from dataclasses import dataclass, field
 from typing import List, Dict
 from functools import partial
+
 
 @dataclass
 class PopulationLikelihood:
@@ -15,10 +17,11 @@ class PopulationLikelihood:
     
     def __post_init__(self):
         self.N_events = self.event_data['prior'].shape[0]
+        self.log_epsilon = 1e-30
     
     @staticmethod
     def log(x):
-        return jnp.log(x)
+        return jnp.log(x + 1e-30)
     
     def sampled_event_bayes_factors(self, data, params):
         if len(self.models) == 0:

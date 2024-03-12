@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -24,7 +24,7 @@ import pandas as pd
 import corner
 
 import numpyro
-
+import numpy as np
 
 @dataclass
 class Sampler:
@@ -33,10 +33,11 @@ class Sampler:
     likelihood : Any = field(repr=False)
     num_samples : int = 2000
     num_warmup : int = 1000
-    seed : int = 0
-    target_accept_prob : float = 0.9
+    seed : Union[None, int] = None
+    target_accept_prob : Union[None, float] = None
     summary : bool = True
     return_samples : bool = False
+    max_tree_depth : Union[None, int, Tuple] = 6
     #validation : bool = True
     
     def __post_init__(self):
@@ -52,13 +53,15 @@ class Sampler:
         
     def sample(self):
         # Start from this source of randomness. We will split keys for subsequent operations.
+        if self.seed is None:
+            self.seed = np.random.randint(2*30)
         rng_key = jax.random.PRNGKey(self.seed)
         rng_key, rng_key_ = jax.random.split(rng_key)
 
         #numpyro.enable_validation(True)
 
         # Run NUTS.
-        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob, init_strategy=init_to_sample())
+        kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob, max_tree_depth=self.max_tree_depth)
         num_samples = self.num_samples
         mcmc = MCMC(kernel, num_warmup=self.num_warmup, num_samples=num_samples)
         mcmc.run(rng_key_)

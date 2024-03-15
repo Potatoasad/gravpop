@@ -119,6 +119,9 @@ class Redshift(AbstractPopulationModel):
         """
         return jnp.nan_to_num(self.probability(data, params),nan=0)
 
+    def total_four_volume(self, params, analysis_time):
+        return self.normalization(parameters) / 1e9 * analysis_time
+
 
 class PowerLawRedshift(Redshift):
     """A subclass of Redshift representing power law redshift distributions.
@@ -137,3 +140,5 @@ class PowerLawRedshift(Redshift):
             numpy.ndarray: Array of power law values.
         """
         return ((1+data[self.var_name])**(params[self.hyper_var_name]))
+
+

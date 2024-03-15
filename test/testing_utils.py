@@ -4,7 +4,7 @@ import numpyro.distributions as dist
 from numpyro.distributions import Distribution
 import jax
 import jax.numpy as jnp
-from jax import jacfwd
+from jax import jacfwd, jacrev
 import numpy as np
 
 from typing import Dict, List
@@ -28,7 +28,10 @@ def model_gradient(model, data, param, canonical_parameter_order=None):
 	def make_dictionary(x):
 		return {parameter : x[i] for i,parameter in enumerate(canonical_parameter_order)}
 
-	dYdx = jacfwd(lambda x: model(data, make_dictionary(x)))(make_vector(param))
+	grad_func = jax.grad(lambda x: model(data, x))
+	grad_func_vmapped = jax.
+
+	dYdx = jacrev(lambda x: model(data, make_dictionary(x)))(make_vector(param))
 	if len(canonical_parameter_order) == 1:
 		return {parameter : dYdx.flatten() for i,parameter in enumerate(canonical_parameter_order)}
 

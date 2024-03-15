@@ -34,10 +34,11 @@ class Sampler:
     num_samples : int = 2000
     num_warmup : int = 1000
     seed : Union[None, int] = None
-    target_accept_prob : Union[None, float] = None
+    target_accept_prob : Union[None, float] = 0.7
     summary : bool = True
     return_samples : bool = False
     max_tree_depth : Union[None, int, Tuple] = 6
+    just_prior : bool = False
     #validation : bool = True
     
     def __post_init__(self):
@@ -48,6 +49,9 @@ class Sampler:
     def model(self):
         for var,dist in self.priors.items():
             self.x[var] = numpyro.sample(var, dist)
+
+        if self.just_prior:
+            return None
 
         numpyro.factor('logP', self.likelihood.logpdf(self.x))
         

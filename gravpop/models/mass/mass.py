@@ -27,7 +27,7 @@ class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
         self.primary_mass_name = primary_mass_name
         self.mass_ratio_name = mass_ratio_name
         self.m1s = jnp.linspace(mmin_fixed, mmax_fixed, normalization_shape[0])
-        self.qs = jnp.linspace(0, 1, normalization_shape[1])
+        self.qs = jnp.linspace(mmin_fixed/mmax_fixed, 1, normalization_shape[1])
         self.m1s_grid, self.qs_grid = jnp.meshgrid(self.m1s, self.qs)
         self.mass_ratio_norm_clip_threshold = 1e-16
         #print("""Note: SmoothedTwoComponentPrimaryMassRatio is an unnormalized distribution. 

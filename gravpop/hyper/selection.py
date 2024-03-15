@@ -32,7 +32,7 @@ class SelectionFunction:
 		return scipy.stats.gamma.rvs(a=N_events) / (efficiency * hyper_vol)
 
 	def calculate_rate_for_hyperparameters_chunked(self, likelihood, params, N_events=None, chunk=100):
-		N_events = N_events or (likelihood.event_data['prior'].shape[0])
+		N_events = N_events or (likelihood.N_events)
 		arbitrary_variable_in_params = next(iter(params.keys()))
 		param_shape = params[arbitrary_variable_in_params].shape
 		in_axes_dict_shape = {variable : 0  for variable in params.keys()}
@@ -55,6 +55,14 @@ class SelectionFunction:
 
 		return jnp.array(result)
 
+	def calculate_N_eff_chunked(self, likelihood, params, chunk=100):
+			N_eff_func = lambda params : likelihood.compute_selection_N_eff_only(params, N=self.total_generated)
+			axes_dict_shape = {key:0 for key in params.keys()}
+			N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=100)
+
+			N_effs = N_eff_chunked_func(params)
+
+			return N_effs
 
 
 	

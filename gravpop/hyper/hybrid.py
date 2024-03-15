@@ -4,6 +4,7 @@ from ..models.utils import *
 from .selection import SelectionFunction
 from ..models.redshift import Redshift
 from ..utils import *
+import numpy as np
 
 
 from dataclasses import dataclass, field
@@ -20,7 +21,13 @@ class HybridPopulationLikelihood:
     def __post_init__(self):
         if not ('weights' in self.event_data):
             raise ValueError("Expected 'weights' key in the event_data dictionary")
-        self.N_events = self.event_data['weights'].shape[0]
+        self.N_events = self.event_data['weights'].shape[-1]
+
+        if "prior" not in self.event_data:
+            keyvalues = list(self.event_data.items())
+            largest_shape = keyvalues[np.argmax([len(value.shape) for key,value in keyvalues])][1].shape # most probably a sampled variable
+            #largest_shape = self.event_data[key_with_largest_shape].shape
+            self.event_data["prior"] = jnp.ones(shape=largest_shape)
 
         if isinstance(self.selection_data, Dict):
             redshift_model = [model for model in self.sampled_models if isinstance(model, Redshift)]
@@ -38,6 +45,13 @@ class HybridPopulationLikelihood:
         else:
             print("No selection function provided")
             self.selection_data = None
+
+        self._models = self.sampled_models + self.analytic_models
+
+    @property
+    def models(self):
+        return self._models
+    
     
     @staticmethod
     def log(x):
@@ -46,6 +60,18 @@ class HybridPopulationLikelihood:
     def total_event_bayes_factors(self, data, params, N=None, detection_efficiency=1):
         return self.analytic_event_bayes_factors(self.event_data, params, detection_efficiency) \
                 + self.sampled_event_bayes_factors(self.event_data, params, N)
+
+    def sampled_compute_log_weights(self, data, params):
+        return sum(self.log(model(data, params)) for model in self.models) - self.log(data["prior"])
+
+    def compute_selection_N_eff(self, logweights, N=None):
+        log_mu = jax.scipy.special.logsumexp(logweights, axis=-1) - jnp.log(N)
+        mu = jnp.exp(log_mu)
+        log_var_1 = jax.scipy.special.logsumexp(2*logweights , axis=-1) - 2*jnp.log(N)
+        log_var_2 = 2*log_mu - jnp.log(N)
+        var = jnp.exp(log_var_1) - jnp.exp(log_var_2)
+        N_eff = mu**2 / var
+        return N_eff
     
     @staticmethod
     def aggregate_kernels(data, loglikes):

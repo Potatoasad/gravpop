@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Union, Dict
+import jax.numpy as jnp
+import jax
+import numpy
 
 @dataclass
 class Grid1D:

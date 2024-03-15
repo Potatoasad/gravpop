@@ -8,17 +8,22 @@ from ..hyper import PopulationLikelihood
 import jax
 import jax.numpy as jnp
 
+DEFAULT_GRID =  Grid([Grid1D(name='mass_1_source', minimum=2, maximum=100, N=200, latex_name=r"$m_1$"), 
+                      Grid1D(name='mass_ratio', minimum=0, maximum=1  , N=200, latex_name=r"$q$")])
+
+
 @dataclass
 class MassPlot:
     hyper_posterior_samples : Dict[str, jax.Array] = field(repr=False)
-    mass_grid : Dict[str, Union[Grid, Grid1D]] = field(repr=False)
     model : Optional[AbstractPopulationModel] = None
+    mass_grid : Optional[Dict[str, Union[Grid, Grid1D]]] = None
     confidence_interval : float = 0.95
     rate : bool = False
     chunk : int = 100
     
     def __post_init__(self):
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
+        self.mass_grid = self.mass_grid or DEFAULT_GRID 
         data = self.mass_grid.data
         self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk)
         

@@ -8,17 +8,21 @@ from ..hyper import PopulationLikelihood
 import jax
 import jax.numpy as jnp
 
+
+DEFAULT_GRID =  Grid1D(name='redshift', minimum=0, maximum=1.9, N=100, latex_name=r"$z$")
+
 @dataclass
 class RedshiftPlot:
     hyper_posterior_samples : Dict[str, jax.Array] = field(repr=False)
-    redshift_grid : Dict[str, Union[Grid, Grid1D]] = field(repr=False)
     model : Optional[AbstractPopulationModel] = None
+    redshift_grid : Optional[Dict[str, Union[Grid, Grid1D]]] = None
     confidence_interval : float = 0.95
     rate : float = False
     chunk : int = 1000
     
     def __post_init__(self):
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
+        self.redshift_grid = self.redshift_grid or DEFAULT_GRID
         data = self.redshift_grid.data
         compute_rate = lambda data,x : (1+data['redshift'])**(x['lamb'])
         self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk)

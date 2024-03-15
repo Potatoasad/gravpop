@@ -25,7 +25,7 @@ def test_likelihood_sampled():
 		event_data = {'x': x_data, # 10 events, 1 kernels, 1000 points each
 									'weights': jnp.ones((E,K))/K}
 
-		HL = HybridPopulationLikelihood(sampled_models=[TG], event_data=event_data, analytic_models=[], selection_data={})
+		HL = HybridPopulationLikelihood(sampled_models=[TG], event_data=event_data, analytic_models=[])
 
 
 
@@ -42,7 +42,24 @@ def test_likelihood_sampled():
 
 
 def test_constructed_full_likelihood():
-		from gravpop_pipe import *
+		filename = 'test/testdata/test_event_data.h5'
+		selection_filename = 'test/testdata/test_selection_function.h5'
+
+		SM = SmoothedTwoComponentPrimaryMassRatio(primary_mass_name="mass_1_source")
+		R = PowerLawRedshift(z_max=1.9)
+
+		HL = PopulationLikelihood.from_file(
+		            event_data_filename = filename,
+		            selection_data_filename = selection_filename,
+		            models = [SM,R]
+		            )
+
+		Lambda_0 = dict(alpha = 3.5,lam = 0.04,mmin = 5,mmax = 96,beta = 1.1,mpp = 35,sigpp = 4,delta_m = 3,lamb = 2.9)
+		HL.logpdf(Lambda_0)
+		
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from ..models import Redshift, AbstractPopulationModel
 import jax
 import jax.numpy as jnp
@@ -15,9 +15,12 @@ class SelectionFunction:
 	analysis_time : float = 1
 	total_generated : Optional[int] = None
 	redshift_model : Optional[AbstractPopulationModel] = None
+	total_detected :Optional[int] = None
 
 	def __post_init__(self):
-		self.total_generated = math.prod(self.selection_data['prior'].shape)
+		self.total_detected = self.total_detected or math.prod(self.selection_data['prior'].shape)
+		self.total_generated = self.total_generated or self.total_detected
+		self.detection_efficiency = self.total_detected/self.total_generated
 
 	def surveyed_hypervolume(self, params):
 		return self.redshift_model.normalization(params) / 1e9 * self.analysis_time

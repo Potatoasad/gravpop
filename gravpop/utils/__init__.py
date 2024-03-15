@@ -1,3 +1,2 @@
-from .grid import *
-from .plotting import *
 from .vmap import *
+from .reading_data import *

@@ -3,6 +3,7 @@ import jax.numpy as jnp
 from jax import jit
 from ..models.utils import *
 from ..models.redshift import Redshift
+from ..utils import *
 from .selection import SelectionFunction
 
 
@@ -15,7 +16,7 @@ from functools import partial
 class PopulationLikelihood:
     models:   List  # List of population models evaluated using monte-carlo
     event_data:       Dict[str, jax.Array] = field(repr=False)    # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
-    selection_data:   Optional[Union[Dict[str, jax.Array], SelectionFunction]] = field(repr=False)   # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
+    selection_data:   Optional[Union[Dict[str, jax.Array], SelectionFunction]] = field(default=None, repr=False)   # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
     analysis_time: float = 1 # Analysis duration, default to one year
     total_generated: Optional[int] = None
     
@@ -61,3 +62,25 @@ class PopulationLikelihood:
             loglikes_selection += self.total_event_bayes_factors(self.selection_data.selection_data, params, N=self.selection_data.total_generated)
         
         return jnp.nan_to_num( loglikes_event.sum() - self.N_events * loglikes_selection )
+
+    @classmethod
+    def from_file(cls, event_data_filename, selection_data_filename, models, SelectionClass=SelectionFunction):
+        event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
+        selection_data = load_hdf5_to_jax_dict(selection_data_filename)
+        selection_attributes = load_hdf5_attributes(selection_data_filename)
+        if "selection" in selection_data.keys():
+            selection_data = selection_data["selection"]
+
+        if "selection" in selection_attributes.keys():
+            selection_attributes = selection_attributes["selection"]
+
+        redshift_model = [model for model in models if isinstance(model, Redshift)]
+        if len(redshift_model) == 0:
+            redshift_model = None
+        else:
+            redshift_model = redshift_model[0]
+        selection = SelectionClass(selection_data, 
+                                   selection_attributes['analysis_time'],
+                                   selection_attributes['total_generated'],
+                                   redshift_model)
+        return cls(models, event_data, selection)

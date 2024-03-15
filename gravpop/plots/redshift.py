@@ -1,9 +1,10 @@
 from typing import Union, Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
-from gravpop.utils import chunked_vmap
-from ...models import AbstractPopulationModel
-from ...hyper import PopulationLikelihood
+from .grid import Grid1D, Grid
+from ..utils.vmap import chunked_vmap
+from ..models import AbstractPopulationModel
+from ..hyper import PopulationLikelihood
 import jax
 import jax.numpy as jnp
 

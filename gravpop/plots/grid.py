@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional
 import jax.numpy as jnp
 import jax
 import numpy
+
 
 @dataclass
 class Grid1D:
@@ -10,11 +11,12 @@ class Grid1D:
 	minimum : float = 0.0
 	maximum : float = 0.0
 	N : int = 100
-	latex_name : str = r'$x$'
+	latex_name : Optional[str] = None
 
 	def __post_init__(self):
-		if self.name != 'x':
-			self.latex_name = fr'${self.name}$'
+		if self.latex_name is None:
+			new_name = self.name.replace('_','') 
+			self.latex_name = fr'${new_name}$'
 
 		self.grid = jnp.linspace(self.minimum, self.maximum, self.N)
 		self._data = {self.name : self.grid}

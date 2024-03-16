@@ -18,7 +18,7 @@ class RedshiftPlot:
     redshift_grid : Optional[Dict[str, Union[Grid, Grid1D]]] = None
     confidence_interval : float = 0.95
     rate : float = False
-    chunk : int = 1000
+    chunk : int = 100
     
     def __post_init__(self):
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
@@ -26,15 +26,22 @@ class RedshiftPlot:
         data = self.redshift_grid.data
         compute_rate = lambda data,x : (1+data['redshift'])**(x['lamb'])
         self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk)
-        self._vmapped_func_rate = chunked_vmap( lambda x: compute_rate(data, x), in_axes=(self._shapes,), chunk=self.chunk)
-            
+        progress_title = "Computing Redshift Model on the Grid"
+        self._vmapped_func_rate = chunked_vmap( lambda x: compute_rate(data, x), in_axes=(self._shapes,), chunk=self.chunk, progress_note=progress_title)
+        self.result = None
+        self.conf = ((1-self.confidence_interval)/2, self.confidence_interval + (1-self.confidence_interval)/2)
+
+    def compute(self):
         self.result = self._vmapped_func(self.hyper_posterior_samples)
         if self.rate:
             self.result = self.result * self.hyper_posterior_samples["rate"][..., None, None]
-        
-        self.conf = ((1-self.confidence_interval)/2, self.confidence_interval + (1-self.confidence_interval)/2)
+
+    def compute_if_not_computed(self):
+        if self.result is None:
+            self.compute()
             
     def plot_model(self, ax=None, aspect=0.5, log_lower=-15):
+        self.compute_if_not_computed()
         redshift_x = list(self.redshift_grid.data.values())[0]
         redshift_y_median = jnp.quantile(self.result, 0.5, axis=0)
         redshift_y_lower = jnp.quantile(self.result, self.conf[0], axis=0)
@@ -62,6 +69,7 @@ class RedshiftPlot:
         return fig
     
     def plot_1pz(self, ax=None, aspect=0.5, log_lower=-15):
+        self.compute_if_not_computed()
         self.result_1pz = self._vmapped_func_rate(self.hyper_posterior_samples)
         redshift_x = list(self.redshift_grid.data.values())[0]
         redshift_y_median = jnp.quantile(self.result_1pz, 0.5, axis=0)

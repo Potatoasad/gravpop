@@ -19,20 +19,28 @@ class MassPlot:
     mass_grid : Optional[Dict[str, Union[Grid, Grid1D]]] = None
     confidence_interval : float = 0.95
     rate : bool = False
-    chunk : int = 100
+    chunk : int = 20
     
     def __post_init__(self):
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
         self.mass_grid = self.mass_grid or DEFAULT_GRID 
         data = self.mass_grid.data
-        self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk)
-        
+        self.result = None
+        progress_title = "Computing Mass Model on the Grid"
+        self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk, progress_note=progress_title)
+        self.conf = ((1-self.confidence_interval)/2, self.confidence_interval + (1-self.confidence_interval)/2)
+
+    def compute(self):
         self.result = self._vmapped_func(self.hyper_posterior_samples)
         if self.rate:
             self.result = self.result * self.hyper_posterior_samples["rate"][..., None, None]
-        self.conf = ((1-self.confidence_interval)/2, self.confidence_interval + (1-self.confidence_interval)/2)
+
+    def compute_if_not_computed(self):
+        if self.result is None:
+            self.compute()
             
     def mass_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15):
+        self.compute_if_not_computed()
         mass_name = [m.name for m in self.mass_grid.grid_list if "mass_1" in m.name][0]
         mass_ratio_name = [m.name for m in self.mass_grid.grid_list if (("mass" in m.name) and ("ratio" in m.name))][0]
         
@@ -51,8 +59,6 @@ class MassPlot:
         highest, lowest = jnp.log10(mass_y_upper.max()),  max(jnp.log10(mass_y_lower.min()), log_lower)
         high_x, low_x = mass_x.max(), mass_x.min()
         
-        #print(highest, lowest, high_x, low_x)
-        
         import matplotlib.pyplot as plt
         if ax is None:
             fig,ax = plt.subplots(1)
@@ -68,11 +74,11 @@ class MassPlot:
         ax.set_xlim(mass_x.min(), mass_x.max())
         ax.set_ylim(bottom=10**(lowest))
         ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
-        #ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
 
         return ax
     
     def mass_ratio_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15):
+        self.compute_if_not_computed()
         mass_name = [m.name for m in self.mass_grid.grid_list if "mass_1" in m.name][0]
         mass_ratio_name = [m.name for m in self.mass_grid.grid_list if (("mass" in m.name) and ("ratio" in m.name))][0]
         

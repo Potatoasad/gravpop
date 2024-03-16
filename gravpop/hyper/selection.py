@@ -36,8 +36,10 @@ class SelectionFunction:
 		arbitrary_variable_in_params = next(iter(params.keys()))
 		param_shape = params[arbitrary_variable_in_params].shape
 		in_axes_dict_shape = {variable : 0  for variable in params.keys()}
-		efficiency_func = chunked_vmap(lambda params : jnp.exp(likelihood.total_event_bayes_factors(self.selection_data, params, N=self.total_generated)), in_axes=(in_axes_dict_shape,), chunk=chunk)
-		hyper_vol_func = chunked_vmap(lambda params : self.surveyed_hypervolume(params), in_axes=(in_axes_dict_shape,), chunk=chunk)
+		prog_note_1 = "Calculating Rates : Selection Function ..."
+		prog_note_2 = "Calculating Rates : Surveyed Hypervolume ..."
+		efficiency_func = chunked_vmap(lambda params : jnp.exp(likelihood.total_event_bayes_factors(self.selection_data, params, N=self.total_generated)), in_axes=(in_axes_dict_shape,), chunk=chunk, progress_note=prog_note_1)
+		hyper_vol_func = chunked_vmap(lambda params : self.surveyed_hypervolume(params), in_axes=(in_axes_dict_shape,), chunk=chunk, progress_note=prog_note_2)
 
 		efficiency = efficiency_func(params)
 		hyper_vol = hyper_vol_func(params)
@@ -58,7 +60,7 @@ class SelectionFunction:
 	def calculate_N_eff_chunked(self, likelihood, params, chunk=100):
 			N_eff_func = lambda params : likelihood.compute_selection_N_eff_only(params, N=self.total_generated)
 			axes_dict_shape = {key:0 for key in params.keys()}
-			N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=100)
+			N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=100, progress_note="Calculating Selection Function N_effective ...")
 
 			N_effs = N_eff_chunked_func(params)
 

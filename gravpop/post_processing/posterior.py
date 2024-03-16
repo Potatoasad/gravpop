@@ -18,6 +18,7 @@ class HyperPosterior:
 	rate : bool = False
 
 	def __post_init__(self):
+		#print("started making posterior")
 		if self.mass_model is None:
 			possible_models = [model for model in self.likelihood.models if any([isinstance(model, test_model) for test_model in MASS_MODELS])]
 			if len(possible_models) != 0:
@@ -36,17 +37,21 @@ class HyperPosterior:
 		else:
 			raise ValueError("posterior should be either a pandas dataframe or a dictonary of arrays")
 
-		self.mass_plot = MassPlot(self.posterior_dict, self.mass_model)
-		self.redshift_plot = RedshiftPlot(self.posterior_dict, self.redshift_model)
+		#print("making plots")
+		self.mass_plot = MassPlot(self.posterior_dict, model=self.mass_model)
+		self.redshift_plot = RedshiftPlot(self.posterior_dict, model=self.redshift_model)
+		#print("finished making posterior")
 		
 
 	@classmethod
 	def from_file(cls, posterior_sample_file, event_data_file, selection_file, models, rate=False, LikelihoodClass=PopulationLikelihood, SelectionClass=SelectionFunction):
 		posterior_file_extension = posterior_sample_file.split(".")[-1]
+		#print("reading...")
 		if posterior_file_extension == "csv":
 			## Assume it can be read by pandas
 			posterior = pd.read_csv(posterior_sample_file)
 
+		#print("creating likelihood...")
 		likelihood = LikelihoodClass.from_file(
 		            event_data_filename = event_data_file,
 		            selection_data_filename = selection_file,
@@ -55,22 +60,57 @@ class HyperPosterior:
 
 		return cls(posterior, likelihood, rate=rate)
 
-	def calculate_N_eff(self, chunk=100):
+	def calculate_selection_N_eff(self, chunk=100):
 		N_eff = self.likelihood.selection_data.calculate_N_eff_chunked(self.likelihood, self.posterior_dict, chunk=chunk)
-		self.posterior_dict['N_eff'] = N_eff
-		self.posterior.loc[:, 'N_eff'] = N_eff
+		self.posterior_dict['pdet_n_effective'] = N_eff
+		self.posterior.loc[:, 'pdet_n_effective'] = N_eff
+
+	def calculate_event_N_eff_chunked(self, params, chunk=100):
+		N_eff_func = lambda params : self.likelihood.compute_event_N_eff_only(params)
+		axes_dict_shape = {key:0 for key in params.keys()}
+		N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=chunk, progress_note="Calculating Event N_effective ...")
+
+		N_effs = N_eff_chunked_func(params)
+
+		return N_effs
+
+	def calculate_N_eff_event(self, chunk=100):
+		N_eff = self.calculate_event_N_eff_chunked(self.posterior_dict, chunk=chunk)
+		self.posterior_dict['min_event_n_effective'] = N_eff
+		self.posterior.loc[:, 'min_event_n_effective'] = N_eff
+
+	def calculate_N_eff_selection(self, chunk=100):
+		N_eff = self.likelihood.selection_data.calculate_N_eff_chunked(self.likelihood, self.posterior_dict, chunk=chunk)
+		self.posterior_dict['pdet_n_effective'] = N_eff
+		self.posterior.loc[:, 'pdet_n_effective'] = N_eff
 
 	def calculate_rates(self, chunk=100):
 		rate = self.likelihood.selection_data.calculate_rate_for_hyperparameters_chunked(self.likelihood, self.posterior_dict, chunk=chunk)
 		self.posterior_dict['rate'] = rate
 		self.posterior.loc[:, 'rate'] = rate
 
-	def N_effective_cuts(self, chunk=100):
-		if 'N_eff' not in self.posterior.columns:
-			self.calculate_N_eff(chunk=chunk)
-		safe = self.posterior_dict['N_eff'] > 4*self.likelihood.N_events
+	def N_effective_cuts(self, chunk=100, selection=True, events=True):
+		any_column = next(iter(self.posterior_dict.keys()))
+		safe = jnp.ones(shape=self.posterior_dict[any_column].shape, dtype='bool')
+		if events:
+			if 'min_event_n_effective' not in self.posterior.columns:
+				self.calculate_N_eff_event(chunk=chunk)
+			safe = safe | (self.posterior_dict['min_event_n_effective'] > self.likelihood.N_events)
+
+		if selection:
+			if 'pdet_n_effective' not in self.posterior.columns:
+				self.calculate_N_eff_selection(chunk=chunk)
+			safe = safe | (self.posterior_dict['pdet_n_effective'] > 4*self.likelihood.N_events)
+
 		self.posterior_dict_with_cuts = {key:value[safe] for key,value in self.posterior_dict.items()}
 		self.posterior_with_cuts = pd.DataFrame(self.posterior_dict_with_cuts)
 		return self.posterior_with_cuts
 
+	def N_effective_cuts_events(self, chunk=100):
+		if 'min_event_n_effective' not in self.posterior.columns:
+			self.calculate_event_N_eff(chunk=chunk)
+		safe = (self.posterior_dict['min_event_n_effective'] > self.likelihood.N_events)
+		self.posterior_dict_with_cuts = {key:value[safe] for key,value in self.posterior_dict.items()}
+		self.posterior_with_cuts = pd.DataFrame(self.posterior_dict_with_cuts)
+		return self.posterior_with_cuts
 

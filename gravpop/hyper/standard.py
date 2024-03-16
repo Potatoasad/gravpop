@@ -23,6 +23,7 @@ class PopulationLikelihood:
     enforce_convergence: bool = False
     
     def __post_init__(self):
+        #print("redoing prior")
         if "prior" not in self.event_data:
             keyvalues = list(self.event_data.items())
             largest_shape = keyvalues[np.argmax([len(value.shape) for key,value in keyvalues])][1].shape # most probably a sampled variable
@@ -40,6 +41,7 @@ class PopulationLikelihood:
         elif isinstance(self.selection_data, SelectionFunction):
             self.analysis_time = self.selection_data.analysis_time
             self.total_generated = self.selection_data.total_generated
+        #print("finished making likleihood")
     
     @staticmethod
     def log(x):
@@ -59,14 +61,18 @@ class PopulationLikelihood:
 
     def total_event_bayes_factors(self, data, params, N=None, selection=False):
         if selection and self.enforce_convergence:
+            logweights = self.sampled_compute_log_weights(data, params)
             log_mu, N_eff = self.compute_selection_N_eff(logweights)
-            return jnp.where(N_eff > 4*N_events, log_mu, jnp.nan_to_num(-jnp.inf))
+            return jnp.where(N_eff > 4*self.N_events, log_mu, jnp.nan_to_num(-jnp.inf))
         elif (not selection) and self.enforce_convergence:
-            pass
+            logweights = self.sampled_compute_log_weights(data, params)
+            log_mu, N_eff = self.compute_event_min_N_eff(self, logweights, N=None)
+            return jnp.where(N_eff > self.N_events, log_mu, jnp.nan_to_num(-jnp.inf))
         else:
             return self.sampled_event_bayes_factors(data, params, N=N)
 
     def compute_selection_N_eff(self, logweights, N=None):
+        N = N or logweights.shape[-1]
         log_mu = jax.scipy.special.logsumexp(logweights, axis=-1) - jnp.log(N)
         mu = jnp.exp(log_mu)
         log_var_1 = jax.scipy.special.logsumexp(2*logweights , axis=-1) - 2*jnp.log(N)
@@ -75,9 +81,21 @@ class PopulationLikelihood:
         N_eff = mu**2 / var
         return log_mu, N_eff
 
+    def compute_event_min_N_eff(self, logweights, N=None):
+        N = N or logweights.shape[-1]
+        log_mu = jax.scipy.special.logsumexp(logweights, axis=-1)
+        log_N_eff = 2*log_mu - jax.scipy.special.logsumexp(2*logweights , axis=-1)
+        N_eff = jnp.min(jnp.exp(log_N_eff), axis=-1)
+        return log_mu- jnp.log(N), N_eff
+
     def compute_selection_N_eff_only(self, params, N=None):
         logweights = self.sampled_compute_log_weights(self.selection_data.selection_data, params)
         return self.compute_selection_N_eff(logweights, N=N)[1]
+
+    def compute_event_N_eff_only(self, params, N=None):
+        N = N or self.N_events
+        logweights = self.sampled_compute_log_weights(self.event_data, params)
+        return self.compute_event_min_N_eff(logweights, N=N)[1]
     
     def logpdf(self, params):
         # Event Likelihoods
@@ -94,9 +112,13 @@ class PopulationLikelihood:
 
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, models, SelectionClass=SelectionFunction):
+        #print("getting event data...")
         event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
+        #print("getting selection data...")
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
         selection_attributes = load_hdf5_attributes(selection_data_filename)
+
+        #print("reordering data...")
         if "selection" in selection_data.keys():
             selection_data = selection_data["selection"]
 
@@ -108,6 +130,8 @@ class PopulationLikelihood:
             redshift_model = None
         else:
             redshift_model = redshift_model[0]
+
+        #print("creating selection")
         selection = SelectionClass(selection_data, 
                                    selection_attributes['analysis_time'],
                                    selection_attributes['total_generated'],

@@ -73,7 +73,7 @@ def test_posterior_pulling_data():
 	R = PowerLawRedshift(z_max=1.9)
 
 	HP = HyperPosterior.from_file(posterior_file, filename, selection_filename, models=[SM,R])
-	HP.calculate_rates()
+	#HP.calculate_rates()
 	HP.N_effective_cuts()
 	HP.posterior_with_cuts.to_csv("/Users/asadh/Documents/GitHub/gravpop_pipe/dev/samples_output_w_cuts.csv",index=False)
 

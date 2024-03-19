@@ -6,6 +6,9 @@ import jax.numpy as jnp
 from ..plots import *
 from ..models import *
 from ..hyper import *
+from ..utils import *
+
+BETA_CONVERTER = BetaDistributionConverter()
 
 MASS_MODELS = [SmoothedTwoComponentPrimaryMassRatio]
 
@@ -41,6 +44,9 @@ class HyperPosterior:
 		self.mass_plot = MassPlot(self.posterior_dict, model=self.mass_model)
 		self.redshift_plot = RedshiftPlot(self.posterior_dict, model=self.redshift_model)
 		#print("finished making posterior")
+
+		self.posterior_dict = BETA_CONVERTER.convert_parameters(self.posterior_dict, remove=False)
+		self.posterior = BETA_CONVERTER.convert_parameters(self.posterior, remove=False)
 		
 
 	@classmethod

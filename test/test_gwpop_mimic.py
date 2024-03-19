@@ -70,7 +70,24 @@ class TestAgainstGWPop:
 		gwpop_red = jnp.nan_to_num(self.evaluate_gwpop_redshift_model_at(param))
 		gravpop_red = jnp.nan_to_num(self.evaluate_gravpop_redshift_model_at(param))
 
-		rel = jnp.abs((gwpop_red - gravpop_red))/(jnp.abs(gwpop_red) + 1e-16)
+		rel = jnp.abs((gravpop_red))/(jnp.abs(gwpop_red) + 1e-16)
+
+		fig = plt.figure(layout="constrained")
+        gs = GridSpec(1, 1, figure=fig)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax1.contourf(mag_data['a_1'], mag_data['a_2'], jnp.log(Z_gravpop))
+        ax2.contourf(mag_data['a_1'], mag_data['a_2'], jnp.log(Z_gwpop))
+        ax1.set_xlabel(r"$a_1$"); ax2.set_xlabel(r"$a_1$");
+        ax1.set_ylabel(r"$a_2$"); ax2.set_ylabel(r"$a_2$");
+        ax1.set_title(r"$\log P_{gravpop}$")
+        ax2.set_title(r"$\log P_{gwpopulation}$")
+        ax3.hist(rel.flatten(), bins=10);
+        ax3.set_title(r"Histogram of $P_{gravpop}/P_{gwpop}$")
+        plt.suptitle("Log probability comparison for spin magnitude models")
+        fig.savefig("./test/images/spin_magnitude_model_comparison.png")
+        assert not jnp.any(jnp.isnan(Z_gravpop)) # TESTING NO NANs
+
+
 		#assert rel.max() < 1e-2
 
 	def test_compare_mass(self):

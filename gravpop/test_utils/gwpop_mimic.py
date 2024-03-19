@@ -1,3 +1,5 @@
+#### This is a direct rip from gwpop so I can easily test against it
+
 import inspect
 import json
 import os
@@ -88,10 +90,10 @@ class GWPopLoader:
     maximum_mass : float = 100
     max_redshift : float = 1.9
     vt_models : List[str] = field(default_factory=(lambda : DEFAULT_MASS.copy()))
-    vt_ifar_threshold = 1.0
-    vt_snr_threshold = 11.0
-    vt_function = "injection_resampling_vt"
-    enforce_minimum_neffective_per_event = False
+    vt_ifar_threshold : float = 1.0
+    vt_snr_threshold : float = 11.0
+    vt_function : str = "injection_resampling_vt"
+    enforce_minimum_neffective_per_event : bool = False
     
     def __post_init__(self):
         self.posteriors = None
@@ -230,8 +232,6 @@ class GWPopLoader:
             likelihood_class = MinimumEffectiveSamplesLikelihood
         else:
             likelihood_class = HyperparameterLikelihood
-        likelihood_class = HyperparameterLikelihood
-        self.selection.enforce_convergence = False
         likelihood = likelihood_class(
             posteriors,
             self.model,

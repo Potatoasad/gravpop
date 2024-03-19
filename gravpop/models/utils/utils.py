@@ -28,3 +28,18 @@ def truncnorm(x, mu, sigma, high, low):
     prob = jnp.exp(-jnp.power(x - mu, 2) / (2 * sigma**2))
     prob *= norm*box(x, low, high)
     return prob
+
+
+import jax.numpy as jnp
+from jax import grad
+from jax.scipy.special import betaln
+
+@jit
+def beta(x, alpha, beta, scale):
+    ln_beta = (alpha - 1) * jnp.log(x) + (beta - 1) * jnp.log(scale - x)
+    ln_beta -= betaln(alpha, beta)
+    ln_beta -= (alpha + beta - 1) * jnp.log(scale)
+    prob = jnp.exp(ln_beta)
+    prob *= box(x, 0.0, scale)
+    prob = jnp.nan_to_num(prob)
+    return prob

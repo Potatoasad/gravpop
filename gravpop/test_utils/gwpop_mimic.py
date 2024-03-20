@@ -74,8 +74,18 @@ from dataclasses import dataclass, field
 from typing import Union, List, Optional
 
 
-DEFAULT_MASS = {'mass' : 'SmoothedMassDistribution', 
-                'redshift' : 'gwpopulation.models.redshift.PowerLawRedshift'}
+#DEFAULT_MASS = {'mass' : 'SmoothedMassDistribution', 
+#                'redshift' : 'gwpopulation.models.redshift.PowerLawRedshift', 
+#               'tilt' : 'iid_spin', 
+#                'mag' : 'iid_spin_orientation'}
+
+DEFAULT_MASS = dict(
+            mass="SmoothedMassDistribution",#"two_component_primary_mass_ratio",
+            mag="iid_spin_magnitude",
+            tilt="iid_spin_orientation",
+            redshift="gwpopulation.models.redshift.PowerLawRedshift",
+        )
+
 
 @dataclass
 class GWPopLoader:
@@ -94,6 +104,7 @@ class GWPopLoader:
     vt_snr_threshold : float = 11.0
     vt_function : str = "injection_resampling_vt"
     enforce_minimum_neffective_per_event : bool = False
+    samples_per_posterior : int = 1000
     
     def __post_init__(self):
         self.posteriors = None
@@ -237,7 +248,7 @@ class GWPopLoader:
             self.model,
             conversion_function=convert_to_beta_parameters,
             selection_function=self.selection,
-            #max_samples=args.max_samples,
+            max_samples=self.samples_per_posterior,
             cupy=False
         )
         self.likelihood = likelihood

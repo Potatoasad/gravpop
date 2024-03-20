@@ -29,7 +29,7 @@ class BetaDistributionConverter:
                 if mu in converted and sigma in converted:
                     done = True
                     alpha_val, beta_val, _ = BetaDistributionConverter.mu_var_max_to_alpha_beta_max(
-                        parameters[mu], parameters[sigma], parameters[amax]
+                        converted[mu], converted[sigma], converted[amax]
                     )
                     converted[alpha], converted[beta] = alpha_val, beta_val
                     added_keys.extend([alpha, beta])
@@ -38,7 +38,7 @@ class BetaDistributionConverter:
             return done
 
         done = False
-        for suffix in ["_1", "_2"]:
+        for suffix in ["_1", "_2", ""]:
             done |= _convert(suffix)
 
         return converted, added_keys

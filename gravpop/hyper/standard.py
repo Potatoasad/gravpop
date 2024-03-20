@@ -102,7 +102,7 @@ class PopulationLikelihood:
     
     def logpdf(self, params):
         # Event Likelihoods
-        loglikes_event =self.total_event_bayes_factors(self.event_data, params)
+        loglikes_event =self.total_event_bayes_factors(self.event_data, params, N=self.N_posterior_samples)
         
         # Selection Likelihood
         loglikes_selection = 0.0
@@ -124,8 +124,11 @@ class PopulationLikelihood:
             import pandas as pd
             df_list = np.load(event_data_filename, allow_pickle=True)
             minimum_length = min([min(len(df),samples_per_event) for df in df_list])
+            print(minimum_length)
             event_data = {col : jnp.stack([df_list[i][col][0:minimum_length].values for i in range(len(df_list))]) for col in df_list[0].columns}
             event_data['mass_1_source'] = event_data['mass_1']
+            event_data['chi_1'] = event_data['a_1']
+            event_data['chi_2'] = event_data['a_2']
             print(event_data['prior'].shape)
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
         selection_attributes = load_hdf5_attributes(selection_data_filename)

@@ -50,7 +50,7 @@ class HyperPosterior:
 		
 
 	@classmethod
-	def from_file(cls, posterior_sample_file, event_data_file, selection_file, models, rate=False, LikelihoodClass=PopulationLikelihood, SelectionClass=SelectionFunction, **kwargs):
+	def from_file(cls, posterior_sample_file, event_data_file, selection_file, models, rate=False, LikelihoodClass=PopulationLikelihood, SelectionClass=SelectionFunction, samples_per_event=1000, **kwargs):
 		posterior_file_extension = posterior_sample_file.split(".")[-1]
 		#print("reading...")
 		if posterior_file_extension == "csv":
@@ -62,7 +62,7 @@ class HyperPosterior:
 		            event_data_filename = event_data_file,
 		            selection_data_filename = selection_file,
 		            models = models,
-		            **kwargs
+		            samples_per_event=samples_per_event,
 		            )
 
 		return cls(posterior, likelihood, rate=rate)

@@ -39,7 +39,7 @@ class MassPlot:
         if self.result is None:
             self.compute()
             
-    def mass_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15):
+    def mass_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15, color=None, label=None, alpha=0.3):
         self.compute_if_not_computed()
         mass_name = [m.name for m in self.mass_grid.grid_list if "mass_1" in m.name][0]
         mass_ratio_name = [m.name for m in self.mass_grid.grid_list if (("mass" in m.name) and ("ratio" in m.name))][0]
@@ -62,8 +62,8 @@ class MassPlot:
         import matplotlib.pyplot as plt
         if ax is None:
             fig,ax = plt.subplots(1)
-        ax.plot(mass_x, mass_y_median)
-        ax.fill_between(mass_x, mass_y_lower, mass_y_upper, alpha=0.3)
+        ax.plot(mass_x, mass_y_median, color=color, label=label)
+        ax.fill_between(mass_x, mass_y_lower, mass_y_upper, color=color, alpha=alpha)
         ax.set_yscale("log")
         ax.set_xlabel(mass_1_grid_obj.latex_name)
         if self.rate:
@@ -77,7 +77,7 @@ class MassPlot:
 
         return ax
     
-    def mass_ratio_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15):
+    def mass_ratio_marginal_plot(self, ax=None, aspect=0.5, log_lower=-15, color=None, label=None, alpha=0.3):
         self.compute_if_not_computed()
         mass_name = [m.name for m in self.mass_grid.grid_list if "mass_1" in m.name][0]
         mass_ratio_name = [m.name for m in self.mass_grid.grid_list if (("mass" in m.name) and ("ratio" in m.name))][0]
@@ -100,8 +100,8 @@ class MassPlot:
         import matplotlib.pyplot as plt
         if ax is None:
             fig,ax = plt.subplots(1)
-        ax.plot(mass_x, mass_ratio_y_median)
-        ax.fill_between(mass_x, mass_ratio_y_lower, mass_ratio_y_upper, alpha=0.3)
+        ax.plot(mass_x, mass_ratio_y_median, color=color, label=label)
+        ax.fill_between(mass_x, mass_ratio_y_lower, mass_ratio_y_upper, color=color, alpha=alpha)
         ax.set_xlabel(mass_ratio_grid_obj.latex_name)
         if self.rate:
             ax.set_ylabel(r"$\frac{dN}{dq}$")

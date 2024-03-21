@@ -12,13 +12,18 @@ BETA_CONVERTER = BetaDistributionConverter()
 
 MASS_MODELS = [SmoothedTwoComponentPrimaryMassRatio]
 
+def is_a_spin_magnitude_model(S_mag):
+	return ("spin" in S_mag.__class__.__name__.lower()) and ("magnitude" in S_mag.__class__.__name__.lower())
+
 @dataclass
 class HyperPosterior:
 	posterior : Optional[Union[pd.DataFrame, Dict[str, jax.Array]]]
 	likelihood : Any
 	mass_model : Optional[AbstractPopulationModel] = None
 	redshift_model : Optional[AbstractPopulationModel] = None
+	spin_magnitude_model :Optional[AbstractPopulationModel] = None
 	rate : bool = False
+	LVK_posterior_file : Optional[str] = None
 
 	def __post_init__(self):
 		#print("started making posterior")
@@ -32,6 +37,11 @@ class HyperPosterior:
 			if len(possible_models) != 0:
 				self.redshift_model = possible_models[0]
 
+		if self.spin_magnitude_model is None:
+			possible_models = [model for model in self.likelihood.models if is_a_spin_magnitude_model(model)]
+			if len(possible_models) != 0:
+				self.spin_magnitude_model = possible_models[0]
+
 		if isinstance(self.posterior, pd.DataFrame):
 			self.posterior_dict = {col : jnp.array(self.posterior[col].values) for col in self.posterior.columns}
 		elif isinstance(self.posterior, Dict):
@@ -41,16 +51,27 @@ class HyperPosterior:
 			raise ValueError("posterior should be either a pandas dataframe or a dictonary of arrays")
 
 		#print("making plots")
-		self.mass_plot = MassPlot(self.posterior_dict, model=self.mass_model)
-		self.redshift_plot = RedshiftPlot(self.posterior_dict, model=self.redshift_model)
+		if self.mass_model is not None:
+			self.mass_plot = MassPlot(self.posterior_dict, model=self.mass_model)
+
+		if self.redshift_model is not None:
+			self.redshift_plot = RedshiftPlot(self.posterior_dict, model=self.redshift_model)
+
+		if self.spin_magnitude_model is not None:
+			self.spin_magnitude_plot = SpinMagintudePlot(self.posterior_dict, model=self.spin_magnitude_model)
 		#print("finished making posterior")
 
-		self.posterior_dict = BETA_CONVERTER.convert_parameters(self.posterior_dict, remove=False)
-		self.posterior = BETA_CONVERTER.convert_parameters(self.posterior, remove=False)
+		if self.LVK_posterior_file:
+			self.LVK_posterior = pd.read_csv(self.LVK_posterior_file)
+		else:
+			self.LVK_posterior = None
+		#self.posterior_dict = BETA_CONVERTER.convert_parameters(self.posterior_dict, remove=False)
+		#self.posterior = BETA_CONVERTER.convert_parameters(self.posterior, remove=False)
 		
 
 	@classmethod
-	def from_file(cls, posterior_sample_file, event_data_file, selection_file, models, rate=False, LikelihoodClass=PopulationLikelihood, SelectionClass=SelectionFunction, samples_per_event=1000, **kwargs):
+	def from_file(cls, posterior_sample_file, event_data_file, selection_file, models, rate=False, LikelihoodClass=PopulationLikelihood, 
+					   SelectionClass=SelectionFunction, samples_per_event=1000, LVK_posterior_file=None, **kwargs):
 		posterior_file_extension = posterior_sample_file.split(".")[-1]
 		#print("reading...")
 		if posterior_file_extension == "csv":
@@ -63,9 +84,10 @@ class HyperPosterior:
 		            selection_data_filename = selection_file,
 		            models = models,
 		            samples_per_event=samples_per_event,
+		            **kwargs
 		            )
 
-		return cls(posterior, likelihood, rate=rate)
+		return cls(posterior, likelihood, rate=rate, LVK_posterior_file=LVK_posterior_file)
 
 	def calculate_selection_N_eff(self, chunk=100):
 		N_eff = self.likelihood.selection_data.calculate_N_eff_chunked(self.likelihood, self.posterior_dict, chunk=chunk)

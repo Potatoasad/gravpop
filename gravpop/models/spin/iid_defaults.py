@@ -19,7 +19,7 @@ def mu_var_max_to_alpha_beta_max(mu, var, amax):
     return alpha, beta, amax
 
 
-class GaussianIsotropicSpinOrientationsIID(AbstractPopulationModel):
+class GaussianIsotropicSpinOrientationsIID(AbstractSpinPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
 	Performs a monte carlo estimate of the population likelihood. 
@@ -49,7 +49,7 @@ class GaussianIsotropicSpinOrientationsIID(AbstractPopulationModel):
 
 
 
-class BetaSpinMagnitudeIID(AbstractPopulationModel):
+class BetaSpinMagnitudeIID(AbstractSpinPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
 	Performs a monte carlo estimate of the population likelihood. 
@@ -61,18 +61,18 @@ class BetaSpinMagnitudeIID(AbstractPopulationModel):
 	
 		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
 	"""
-	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['alpha_chi','beta_chi','amax'],parameterization="mu_sigma"):
+	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['mu_chi','sigma_chi','amax'],parameterization="mu_sigma"):
 		self.parameterization = parameterization
 		self.converter = lambda x,y,z: (x,y,z)
 		self.var_names = var_names
 		self.hyper_var_names = hyper_var_names
 
-		hyper_var_names_are_alpha_beta = (("alpha" in self.hyper_var_names[0]) or (("beta" in self.hyper_var_names[1])))
+		### SIGMA_CHI IS ACTUALLY SIGMA_CHI**2 THIS IS UNFORTUNATE
 
-		if (parameterization in ("mu_var")) and hyper_var_names_are_alpha_beta:
-			self.converter = lambda mu,var,amax=1 : mu_var_max_to_alpha_beta_max(mu, var, amax)
-		if (parameterization in ("mu_sigma")) and hyper_var_names_are_alpha_beta:
-			self.converter = lambda mu,sigma,amax=1 : mu_var_max_to_alpha_beta_max(mu, sigma**2, amax)
+		hyper_var_names_are_mu_sigma = (("mu" in self.hyper_var_names[0]) or (("sigma" in self.hyper_var_names[1])))
+
+		if (parameterization in ("mu_sigma")) and hyper_var_names_are_mu_sigma:
+			self.converter = lambda mu,sigma,amax=1 : mu_var_max_to_alpha_beta_max(mu, sigma, amax)
 	
 	def __call__(self, data, params):
 		amax = params.get(self.hyper_var_names[2], 1)

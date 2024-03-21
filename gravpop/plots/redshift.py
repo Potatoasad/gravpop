@@ -7,7 +7,7 @@ from ..models import AbstractPopulationModel
 from ..hyper import PopulationLikelihood
 import jax
 import jax.numpy as jnp
-
+import numpy as np
 
 DEFAULT_GRID =  Grid1D(name='redshift', minimum=0, maximum=1.9, N=100, latex_name=r"$z$")
 
@@ -40,7 +40,7 @@ class RedshiftPlot:
         if self.result is None:
             self.compute()
             
-    def plot_model(self, ax=None, aspect=0.5, log_lower=-15):
+    def plot_model(self, ax=None, aspect=0.5, log_lower=-15, color=None, label=None, alpha=0.3):
         self.compute_if_not_computed()
         redshift_x = list(self.redshift_grid.data.values())[0]
         redshift_y_median = jnp.quantile(self.result, 0.5, axis=0)
@@ -55,9 +55,9 @@ class RedshiftPlot:
             fig,ax = plt.subplots(1)
         else:
             fig = ax.get_figure()
-        ax.grid(True, which='major', linestyle='dotted', linewidth=1, color='black', alpha=0.3)
-        ax.plot(redshift_x, redshift_y_median)
-        ax.fill_between(redshift_x, redshift_y_lower, redshift_y_upper, alpha=0.3)
+        ax.grid(True, which='major', linestyle='dotted', linewidth='0.5', color='gray', alpha=0.5)
+        ax.plot(redshift_x, redshift_y_median, color=color, label=label)
+        ax.fill_between(redshift_x, redshift_y_lower, redshift_y_upper, alpha=alpha, color=color)
         ax.set_yscale("log")
         ax.set_xlabel(self.redshift_grid.latex_name)
         ax.set_ylabel(r"$p(z | \Lambda)$")
@@ -68,7 +68,7 @@ class RedshiftPlot:
         
         return fig
     
-    def plot_1pz(self, ax=None, aspect=0.5, log_lower=-15):
+    def plot_1pz(self, ax=None, aspect=0.5, log_lower=-15, color=None, label=None, alpha=0.3):
         self.compute_if_not_computed()
         self.result_1pz = self._vmapped_func_rate(self.hyper_posterior_samples)
         redshift_x = list(self.redshift_grid.data.values())[0]
@@ -84,9 +84,9 @@ class RedshiftPlot:
             fig,ax = plt.subplots(1)
         else:
             fig = ax.get_figure()
-        ax.grid(True, which='major', linestyle='dotted', linewidth=1, color='black', alpha=0.3)
-        ax.plot(redshift_x, redshift_y_median)
-        ax.fill_between(redshift_x, redshift_y_lower, redshift_y_upper, alpha=0.3)
+        ax.grid(True, which='major', linestyle='dotted', linewidth='0.5', color='gray', alpha=0.5)
+        ax.plot(redshift_x, redshift_y_median, color=color, label=label)
+        ax.fill_between(redshift_x, redshift_y_lower, redshift_y_upper, alpha=alpha, color=color)
         ax.set_yscale("log")
         ax.set_xlabel(self.redshift_grid.latex_name)
         ax.set_ylabel(r"$p(z | \Lambda)$")

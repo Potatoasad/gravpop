@@ -4,6 +4,21 @@ from ..utils import *
 from ..generic import *
 
 
+
+def alpha_beta_max_to_mu_var_max(alpha, beta, amax):
+    mu = alpha / (alpha + beta) * amax
+    var = alpha * beta / ((alpha + beta) ** 2 * (alpha + beta + 1)) * amax ** 2
+    return mu, var, amax
+
+
+def mu_var_max_to_alpha_beta_max(mu, var, amax):
+    mu /= amax
+    var /= amax ** 2
+    alpha = (mu ** 2 * (1 - mu) - mu * var) / var
+    beta = (mu * (1 - mu) ** 2 - (1 - mu) * var) / var
+    return alpha, beta, amax
+
+
 class GaussianIsotropicSpinOrientationsIID(AbstractPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
@@ -46,16 +61,22 @@ class BetaSpinMagnitudeIID(AbstractPopulationModel):
 	
 		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
 	"""
-	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['alpha_chi','beta_chi'], a=0, b=1):
-		self.a = a
-		self.b = b
+	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['alpha_chi','beta_chi','amax'],parameterization="mu_sigma"):
+		self.parameterization = parameterization
+		self.converter = lambda x,y,z: (x,y,z)
 		self.var_names = var_names
 		self.hyper_var_names = hyper_var_names
 
+		hyper_var_names_are_alpha_beta = (("alpha" in self.hyper_var_names[0]) or (("beta" in self.hyper_var_names[1])))
+
+		if (parameterization in ("mu_var")) and hyper_var_names_are_alpha_beta:
+			self.converter = lambda mu,var,amax=1 : mu_var_max_to_alpha_beta_max(mu, var, amax)
+		if (parameterization in ("mu_sigma")) and hyper_var_names_are_alpha_beta:
+			self.converter = lambda mu,sigma,amax=1 : mu_var_max_to_alpha_beta_max(mu, sigma**2, amax)
 	
 	def __call__(self, data, params):
-		alpha_chi = params[self.hyper_var_names[0]]
-		beta_chi  = params[self.hyper_var_names[1]]
-		prob  = beta(data[self.var_names[0]], alpha=alpha_chi, beta=beta_chi, scale=(self.b-self.a))
-		prob *= beta(data[self.var_names[1]], alpha=alpha_chi, beta=beta_chi, scale=(self.b-self.a))
+		amax = params.get(self.hyper_var_names[2], 1)
+		alpha_chi, beta_chi, amax = self.converter(params[self.hyper_var_names[0]], params[self.hyper_var_names[1]], amax)
+		prob  = beta(data[self.var_names[0]], alpha=alpha_chi, beta=beta_chi, scale=amax)
+		prob *= beta(data[self.var_names[1]], alpha=alpha_chi, beta=beta_chi, scale=amax)
 		return prob

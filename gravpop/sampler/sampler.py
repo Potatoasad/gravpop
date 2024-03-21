@@ -73,15 +73,15 @@ class Sampler:
             mcmc.print_summary()
         self._samples = mcmc.get_samples()
         
-        self.samples = pd.DataFrame( self._samples)
-        if self.latex_symbols:
-            self.samples.rename(self.latex_symbols, inplace=True, axis=1)
+        self.samples = pd.DataFrame(self._samples)
+        #if self.latex_symbols:
+        #    self.samples.rename(self.latex_symbols, inplace=True, axis=1)
         if self.return_samples:
             return self.samples
         
     def corner(self, color='k', truth=None, truth_color='b'):
         figure = corner.corner(self.samples.values,
-                                labels=list(self.samples.columns),
+                                labels=[self.latex_symbols[col] for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],
                                 show_titles=True,
                                 color=color,
@@ -93,7 +93,7 @@ class Sampler:
         
     def corner_on_fig(self, fig, color='k', truth=None, truth_color='b'):
         figure = corner.corner(self.samples.values,
-                                labels=list(self.samples.columns),
+                                labels=[self.latex_symbols[col] for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],
                                 show_titles=True,
                                 color=color,

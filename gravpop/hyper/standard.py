@@ -116,7 +116,7 @@ class PopulationLikelihood:
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, models, SelectionClass=SelectionFunction, enforce_convergence=False, samples_per_event=1000):
         event_file_ext = event_data_filename.split('.')[-1]
-        print("HERE")
+        #print("HERE")
         if event_file_ext in ('hdf5', 'h5'):
             event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
         elif event_file_ext == 'pkl':
@@ -124,12 +124,12 @@ class PopulationLikelihood:
             import pandas as pd
             df_list = np.load(event_data_filename, allow_pickle=True)
             minimum_length = min([min(len(df),samples_per_event) for df in df_list])
-            print(minimum_length)
+            #print(minimum_length)
             event_data = {col : jnp.stack([df_list[i][col][0:minimum_length].values for i in range(len(df_list))]) for col in df_list[0].columns}
             event_data['mass_1_source'] = event_data['mass_1']
             event_data['chi_1'] = event_data['a_1']
             event_data['chi_2'] = event_data['a_2']
-            print(event_data['prior'].shape)
+            print("(N_events, N_samples_per_event) = ", event_data['prior'].shape)
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
         selection_attributes = load_hdf5_attributes(selection_data_filename)
 

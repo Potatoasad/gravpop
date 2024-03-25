@@ -7,6 +7,7 @@ from ..models import AbstractPopulationModel
 from ..hyper import PopulationLikelihood
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 DEFAULT_GRID =  Grid([Grid1D(name='chi_1', minimum=0, maximum=1, N=100, latex_name=r"$\chi_1$"), 
                       Grid1D(name='chi_2', minimum=0, maximum=1, N=100, latex_name=r"$\chi_2$")])
@@ -20,8 +21,14 @@ class SpinMagintudePlot:
     confidence_interval : float = 0.95
     rate : bool = False
     chunk : int = 20
+    n_samples : int = 1000
     
     def __post_init__(self):
+        acceptable_sample_names = self.model.hyper_var_names + ['rate']
+        total_indices = self.hyper_posterior_samples[next(iter(self.hyper_posterior_samples.keys()))].size
+        self.index_sampling = np.random.randint(total_indices, size=self.n_samples)
+        self.hyper_posterior_samples = {col:value[self.index_sampling] for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
+        #self.hyper_posterior_samples = {col:value for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
         self.spin_grid = self.spin_grid or DEFAULT_GRID 
         data = self.spin_grid.data

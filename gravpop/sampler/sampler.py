@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from typing import List, Dict, Any, Union, Tuple
+from typing import List, Dict, Any, Union, Tuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -31,6 +31,7 @@ class Sampler:
     priors : Dict[str, dist.Distribution]
     latex_symbols : Dict[str, str]
     likelihood : Any = field(repr=False)
+    constraints : List = field(default_factory=(lambda : []))
     num_samples : int = 2000
     num_warmup : int = 1000
     seed : Union[None, int] = None
@@ -49,6 +50,10 @@ class Sampler:
     def model(self):
         for var,dist in self.priors.items():
             self.x[var] = numpyro.sample(var, dist)
+
+        if len(self.constraints) != 0:
+            for i in range(len(self.constraints)):
+                numpyro.factor(str(i), self.constraints[i].logpdf(self.x))
 
         if self.just_prior:
             return None

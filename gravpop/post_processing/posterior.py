@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
 from typing import Optional, List, Union, Dict, Any
 import jax
@@ -19,6 +19,7 @@ def is_a_spin_magnitude_model(S_mag):
 class HyperPosterior:
 	posterior : Optional[Union[pd.DataFrame, Dict[str, jax.Array]]]
 	likelihood : Any
+	models : Optional[Dict[str, AbstractPopulationModel]] = field(default=None)
 	mass_model : Optional[AbstractPopulationModel] = None
 	redshift_model : Optional[AbstractPopulationModel] = None
 	spin_magnitude_model :Optional[AbstractPopulationModel] = None
@@ -27,6 +28,11 @@ class HyperPosterior:
 
 	def __post_init__(self):
 		#print("started making posterior")
+		if self.models is not None:
+			self.mass_model = self.models.get('mass', None)
+			self.redshift_model = self.models.get('redshift', None)
+			self.spin_magnitude_model = self.models.get('spin_magnitude', None)
+			
 		if self.mass_model is None:
 			possible_models = [model for model in self.likelihood.models if any([isinstance(model, test_model) for test_model in MASS_MODELS])]
 			if len(possible_models) != 0:

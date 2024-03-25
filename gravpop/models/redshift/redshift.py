@@ -25,7 +25,7 @@ class Redshift(AbstractPopulationModel):
         probability(data, params): Computes the probability distribution for given data and parameters.
         __call__(data, params): Calls the probability method.
     """
-    def __init__(self, z_max=3, lamb_min=-10, lamb_max=10):
+    def __init__(self, var_names=['redshift'], hyper_var_names=['lamb'], z_max=3, lamb_min=-10, lamb_max=10):
         """Initialize the Redshift class.
 
         Args:
@@ -34,8 +34,10 @@ class Redshift(AbstractPopulationModel):
             lamb_max (float, optional): Maximum value for the hyperparameter (default is 10).
         """
         self.z_max = z_max
-        self.var_name = 'redshift'
-        self.hyper_var_name = 'lamb'
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        self.var_name = var_names[0]
+        self.hyper_var_name = hyper_var_names[0]
         self.lamb_min = lamb_min
         self.lamb_max = lamb_max
         self.lambs = jnp.linspace(self.lamb_min, self.lamb_max, 1000)

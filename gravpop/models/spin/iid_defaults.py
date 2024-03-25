@@ -61,11 +61,19 @@ class BetaSpinMagnitudeIID(AbstractSpinPopulationModel):
 	
 		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
 	"""
-	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['mu_chi','sigma_chi','amax'],parameterization="mu_sigma"):
+	def __init__(self, var_names=['a_1', 'a_2'], hyper_var_names=['mu_chi','sigma_chi','amax'],parameterization="mu_sigma", constraints=None):
 		self.parameterization = parameterization
 		self.converter = lambda x,y,z: (x,y,z)
 		self.var_names = var_names
+		self.constraints = constraints
+		if self.constraints is not None:
+			self.alpha_min_constraint = constraints['alpha'][0]
+			self.alpha_max_constraint = constraints['alpha'][1]
+			self.beta_min_constraint = constraints['beta'][0]
+			self.beta_max_constraint = constraints['beta'][1]
 		self.hyper_var_names = hyper_var_names
+		if (len(self.hyper_var_names) == 2) and 'amax' not in self.hyper_var_names:
+			self.hyper_var_names = self.hyper_var_names + ['amax']
 
 		### SIGMA_CHI IS ACTUALLY SIGMA_CHI**2 THIS IS UNFORTUNATE
 
@@ -77,6 +85,12 @@ class BetaSpinMagnitudeIID(AbstractSpinPopulationModel):
 	def __call__(self, data, params):
 		amax = params.get(self.hyper_var_names[2], 1)
 		alpha_chi, beta_chi, amax = self.converter(params[self.hyper_var_names[0]], params[self.hyper_var_names[1]], amax)
+		if self.constraints is not None:
+			is_alpha_within_constraint = (alpha_chi > self.alpha_min_constraint) & (alpha_chi < self.alpha_max_constraint)
+			is_beta_within_constraint = (beta_chi > self.beta_min_constraint) & (beta_chi < self.beta_max_constraint)
+			are_both_within_constraint = is_alpha_within_constraint & is_beta_within_constraint
 		prob  = beta(data[self.var_names[0]], alpha=alpha_chi, beta=beta_chi, scale=amax)
 		prob *= beta(data[self.var_names[1]], alpha=alpha_chi, beta=beta_chi, scale=amax)
+		if self.constraints is not None:
+			prob = jnp.where(are_both_within_constraint, prob, jnp.nan_to_num(-jnp.inf)*jnp.ones_like(prob))
 		return prob

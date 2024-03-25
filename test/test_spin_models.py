@@ -37,7 +37,7 @@ def test_analytic_spin_matches_monte_carlo_estimate():
 class TestSampledSpinModels:
 
     def setup_method(self, method):
-        self.evaluation_point = {'alpha_chi': 2.0, 'beta_chi':1.0, 'xi_spin':0.1, 'sigma_spin':0.8}
+        self.evaluation_point = {'mu_chi': 2.0, 'sigma_chi':0.9, 'xi_spin':0.1, 'sigma_spin':0.8}
 
     def create_magnitude_dataset(self):
         a1_grid = Grid1D("a_1", minimum=0, maximum=1, N=100)
@@ -60,7 +60,7 @@ class TestSampledSpinModels:
         return gwpopulation.models.spin.iid_spin_orientation_gaussian_isotropic(data, **{k:v for k,v in params.items() if k in cols})
 
     def gravpop_iid_magnitude_model(self, data, params):
-        Mag = BetaSpinMagnitudeIID(var_names = ['a_1', 'a_2'])
+        Mag = BetaSpinMagnitudeIID(parameterization="mu_sigma", var_names = ['a_1', 'a_2'])
         return Mag(data, params)
 
     def gravpop_iid_orientations_model(self, data, params):

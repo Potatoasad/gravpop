@@ -20,12 +20,19 @@ def two_component_single(mass, alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass
     return prob
 
 class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
-    def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100, primary_mass_name="mass_1", mass_ratio_name="mass_ratio", normalization_shape=(1000,500)):
+    def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100, 
+        primary_mass_name=None, mass_ratio_name=None, 
+        normalization_shape=(1000,500), var_names=['mass_1', 'mass_ratio'],
+        hyper_var_names=['alpha', 'beta', 'lam', 'mpp', 'sigpp', 'delta_m', 'mmin', 'mmax']):
+        var_names[0] = primary_mass_name or var_names[0]
+        var_names[1] = mass_ratio_name or var_names[1]
+        self.hyper_var_names = hyper_var_names
+        self.var_names = var_names
         self.gaussian_mass_maximum = gaussian_mass_maximum
         self.mmin_fixed = 2
         self.mmax_fixed = 100
-        self.primary_mass_name = primary_mass_name
-        self.mass_ratio_name = mass_ratio_name
+        self.primary_mass_name = self.var_names[0]
+        self.mass_ratio_name = self.var_names[1]
         self.m1s = jnp.linspace(mmin_fixed, mmax_fixed, normalization_shape[0])
         self.qs = jnp.linspace(mmin_fixed/mmax_fixed, 1, normalization_shape[1])
         self.m1s_grid, self.qs_grid = jnp.meshgrid(self.m1s, self.qs)
@@ -60,14 +67,14 @@ class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
 
     def __call__(self, data, params):
         # Get params
-        alpha = params['alpha']
-        lam = params['lam']
-        mmin = params.get('mmin', self.mmin_fixed)
-        mmax = params.get('mmax', self.mmax_fixed)
-        beta = params['beta']
-        mpp = params['mpp']
-        sigpp = params['sigpp']
-        delta_m = params.get("delta_m", 0)
+        alpha = params[self.hyper_var_names[0]]
+        lam = params[self.hyper_var_names[2]]
+        mmin = params.get(self.hyper_var_names[6], self.mmin_fixed)
+        mmax = params.get(self.hyper_var_names[7], self.mmax_fixed)
+        beta = params[self.hyper_var_names[1]]
+        mpp = params[self.hyper_var_names[3]]
+        sigpp = params[self.hyper_var_names[4]]
+        delta_m = params.get(self.hyper_var_names[5], 0)
 
         # Compute primary mass unnormalized distribution with smoothing
         p_m1 = two_component_single(data[self.primary_mass_name],  alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass_maximum=self.gaussian_mass_maximum)

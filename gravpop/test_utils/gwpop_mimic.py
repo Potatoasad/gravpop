@@ -23,7 +23,7 @@ from bilby.core.utils import (
 from bilby.hyper.model import Model
 from bilby_pipe.utils import convert_string_to_dict
 from gwpopulation.backend import set_backend
-from gwpopulation.conversions import convert_to_beta_parameters
+from gwpopulation.conversions import convert_to_beta_parameters as convert_to_beta_parameters_gwpop
 from gwpopulation.hyperpe import HyperparameterLikelihood, RateLikelihood
 from gwpopulation.models.mass import (
     BrokenPowerLawPeakSmoothedMassDistribution,
@@ -156,7 +156,7 @@ class GWPopLoader:
     def load_prior(self):
         filename = get_path_or_local(self.prior_file)
         hyper_prior = ConditionalPriorDict(filename=filename)
-        hyper_prior.conversion_function = convert_to_beta_parameters
+        hyper_prior.conversion_function = convert_to_beta_parameters_gwpop
         if self.rate:
             hyper_prior["rate"] = LogUniform(
                 minimum=1e-1,
@@ -246,7 +246,7 @@ class GWPopLoader:
         likelihood = likelihood_class(
             posteriors,
             self.model,
-            conversion_function=convert_to_beta_parameters,
+            conversion_function=convert_to_beta_parameters_gwpop,
             selection_function=self.selection,
             max_samples=self.samples_per_posterior,
             cupy=False

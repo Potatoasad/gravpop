@@ -79,7 +79,9 @@ class MassPlot:
         ax.grid(True, which='major', linestyle='dotted', linewidth='0.5', color='gray', alpha=0.5)
         ax.set_xlim(mass_x.min(), mass_x.max())
         ax.set_ylim(bottom=10**(lowest))
-        ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        new_aspect = aspect*(high_x - low_x)/(highest-lowest)
+        if (new_aspect > 0) and not (np.isinf(new_aspect)):
+            ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
 
         return ax
     
@@ -117,7 +119,10 @@ class MassPlot:
         ax.set_xlim(mass_x.min(), mass_x.max())
         ax.set_yscale("log")
         ax.set_ylim(bottom=10**(log_lower))
-        ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        new_aspect = aspect*(high_x - low_x)/(highest-lowest)
+        if (new_aspect > 0) and not (np.isinf(new_aspect)):
+            ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        #ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
         #ax.set_aspect(aspect*(1)/(highest-lowest))
         
         return ax

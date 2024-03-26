@@ -48,7 +48,7 @@ class PopulationLikelihood:
     
     @staticmethod
     def log(x):
-        return jnp.log(x + 1e-30)
+        return jnp.log(x + 1e-37)
 
     def sampled_compute_log_weights(self, data, params):
         return sum(self.log(model(data, params)) for model in self.models) - self.log(data["prior"])

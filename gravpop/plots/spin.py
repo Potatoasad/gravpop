@@ -102,7 +102,10 @@ class SpinMagintudePlot:
         ax.grid(True, which='major', linestyle='dotted', linewidth='0.5', color='gray', alpha=0.5)
         ax.set_xlim(spin_a.min(), spin_a.max())
         #ax.set_ylim(bottom=10**(lowest))
-        ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        #ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        new_aspect = aspect*(high_x - low_x)/(highest-lowest)
+        if (new_aspect > 0) and not (np.isinf(new_aspect)):
+            ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
         #ax.set_aspect(aspect)
 
         return ax

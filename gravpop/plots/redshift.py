@@ -70,7 +70,10 @@ class RedshiftPlot:
         second_lowest = np.partition(redshift_x, 1)[1]  
         ax.set_xlim(second_lowest, redshift_x.max())
         ax.set_ylim(bottom=10**(log_lower))
-        ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        #ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        new_aspect = aspect*(high_x - low_x)/(highest-lowest)
+        if (new_aspect > 0) and not (np.isinf(new_aspect)):
+            ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
         
         return fig
     
@@ -99,6 +102,9 @@ class RedshiftPlot:
         second_lowest = np.partition(redshift_x, 1)[1]  
         ax.set_xlim(second_lowest, redshift_x.max())
         ax.set_ylim(bottom=10**(log_lower))
-        ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        #ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
+        new_aspect = aspect*(high_x - low_x)/(highest-lowest)
+        if (new_aspect > 0) and not (np.isinf(new_aspect)):
+            ax.set_aspect(aspect*(high_x - low_x)/(highest-lowest))
         
         return fig

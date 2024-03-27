@@ -15,6 +15,9 @@ MASS_MODELS = [SmoothedTwoComponentPrimaryMassRatio]
 def is_a_spin_magnitude_model(S_mag):
 	return ("spin" in S_mag.__class__.__name__.lower()) and ("magnitude" in S_mag.__class__.__name__.lower())
 
+def is_a_spin_orientation_model(S_orient):
+	return ("spin" in S_orient.__class__.__name__.lower()) and ("orientation" in S_orient.__class__.__name__.lower())
+
 @dataclass
 class HyperPosterior:
 	posterior : Optional[Union[pd.DataFrame, Dict[str, jax.Array]]]
@@ -22,7 +25,8 @@ class HyperPosterior:
 	models : Optional[Dict[str, AbstractPopulationModel]] = field(default=None)
 	mass_model : Optional[AbstractPopulationModel] = None
 	redshift_model : Optional[AbstractPopulationModel] = None
-	spin_magnitude_model :Optional[AbstractPopulationModel] = None
+	spin_magnitude_model : Optional[AbstractPopulationModel] = None
+	spin_orientation_model : Optional[AbstractPopulationModel] = None
 	rate : bool = False
 	LVK_posterior_file : Optional[str] = None
 
@@ -32,7 +36,7 @@ class HyperPosterior:
 			self.mass_model = self.models.get('mass', None)
 			self.redshift_model = self.models.get('redshift', None)
 			self.spin_magnitude_model = self.models.get('spin_magnitude', None)
-			
+
 		if self.mass_model is None:
 			possible_models = [model for model in self.likelihood.models if any([isinstance(model, test_model) for test_model in MASS_MODELS])]
 			if len(possible_models) != 0:
@@ -47,6 +51,11 @@ class HyperPosterior:
 			possible_models = [model for model in self.likelihood.models if is_a_spin_magnitude_model(model)]
 			if len(possible_models) != 0:
 				self.spin_magnitude_model = possible_models[0]
+
+		if self.spin_orientation_model is None:
+			possible_models = [model for model in self.likelihood.models if is_a_spin_orientation_model(model)]
+			if len(possible_models) != 0:
+				self.spin_orientation_model = possible_models[0]
 
 		if isinstance(self.posterior, pd.DataFrame):
 			self.posterior_dict = {col : jnp.array(self.posterior[col].values) for col in self.posterior.columns}
@@ -65,6 +74,9 @@ class HyperPosterior:
 
 		if self.spin_magnitude_model is not None:
 			self.spin_magnitude_plot = SpinMagintudePlot(self.posterior_dict, model=self.spin_magnitude_model)
+
+		if self.spin_orientation_model is not None:
+			self.spin_orientation_plot = SpinOrientationPlot(self.posterior_dict, model=self.spin_orientation_model)
 		#print("finished making posterior")
 
 		if self.LVK_posterior_file:

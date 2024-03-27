@@ -20,7 +20,7 @@ class SelectionFunction:
 	def __post_init__(self):
 		self.total_detected = self.total_detected or math.prod(self.selection_data['prior'].shape)
 		self.total_generated = self.total_generated or self.total_detected
-		self.detection_efficiency = self.total_detected/self.total_generated
+		self.detection_ratio = self.total_detected/self.total_generated
 
 	def surveyed_hypervolume(self, params):
 		return self.redshift_model.normalization(params) / 1e9 * self.analysis_time
@@ -58,14 +58,14 @@ class SelectionFunction:
 		return jnp.array(result)
 
 	def calculate_N_eff_chunked(self, likelihood, params, chunk=100):
-			N_eff_func = lambda params : likelihood.compute_selection_N_eff_only(params, N=self.total_generated)
-			axes_dict_shape = {key:0 for key in params.keys()}
-			N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=100, progress_note="Calculating Selection Function N_effective ...")
+		N_eff_func = lambda params : likelihood.compute_selection_N_eff_only(params, N=self.total_generated)
+		axes_dict_shape = {key:0 for key in params.keys()}
+		N_eff_chunked_func = chunked_vmap(N_eff_func, in_axes=(axes_dict_shape,), chunk=100, progress_note="Calculating Selection Function N_effective ...")
 
-			N_effs = N_eff_chunked_func(params)
+		N_effs = N_eff_chunked_func(params)
 
-			return N_effs
+		return N_effs
 
 
-	
+
 

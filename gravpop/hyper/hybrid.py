@@ -17,6 +17,7 @@ class HybridPopulationLikelihood:
     analytic_models:  List  # List of population models evaluated analytically
     event_data:       Dict[str, jax.Array] = field(repr=False)    # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
     selection_data:   Optional[Union[Dict[str, jax.Array], SelectionFunction]] = field(default=None, repr=False)   # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
+    enforce_convergence : Optional[bool] = False
     
     def __post_init__(self):
         if not ('weights' in self.event_data):
@@ -41,7 +42,7 @@ class HybridPopulationLikelihood:
             self.analysis_time = self.selection_data.analysis_time
             self.total_generated = self.selection_data.total_generated
             self.total_detected = self.selection_data.total_detected
-            self.detection_efficiency = self.detection_efficiency
+            self.detection_ratio = self.selection_data.detection_ratio
         else:
             print("No selection function provided")
             self.selection_data = None
@@ -52,37 +53,50 @@ class HybridPopulationLikelihood:
     def models(self):
         return self._models
     
-    
     @staticmethod
     def log(x):
         return jnp.log(x + 1e-30)
 
-    def total_event_bayes_factors(self, data, params, N=None, detection_efficiency=1):
-        return self.analytic_event_bayes_factors(self.event_data, params, detection_efficiency) \
+    def total_event_bayes_factors(self, data, params, N=None, detection_ratio=1):
+        return self.analytic_event_bayes_factors(self.event_data, params, detection_ratio) \
                 + self.sampled_event_bayes_factors(self.event_data, params, N)
 
     def sampled_compute_log_weights(self, data, params):
-        return sum(self.log(model(data, params)) for model in self.models) - self.log(data["prior"])
+        return sum(self.log(model(data, params)) for model in self.sampled_models) - self.log(data["prior"])
 
-    def compute_selection_N_eff(self, logweights, N=None):
-        log_mu = jax.scipy.special.logsumexp(logweights, axis=-1) - jnp.log(N)
-        mu = jnp.exp(log_mu)
-        log_var_1 = jax.scipy.special.logsumexp(2*logweights , axis=-1) - 2*jnp.log(N)
-        log_var_2 = 2*log_mu - jnp.log(N)
-        var = jnp.exp(log_var_1) - jnp.exp(log_var_2)
-        N_eff = mu**2 / var
+    def _compute_sampled_selection_N_eff(self, logweights, weights, N=None):
+        log_mu = jax.scipy.special.logsumexp(logweights, axis=-1) - jnp.log(N) 
+        mu = jnp.exp(log_mu)  # E x K
+        log_var_1 = jax.scipy.special.logsumexp(2*logweights , axis=-1) - 2*jnp.log(N) # E x K
+        log_var_2 = 2*log_mu - jnp.log(N)  # E x K
+        var = jnp.exp(log_var_1) - jnp.exp(log_var_2) # E x K
+        var = jnp.sum(var * weights ,axis=-1) # E
+        mu  = jnp.sum(mu  * weights ,axis=-1) # E
+        N_eff = mu**2 / var # E
         return N_eff
+
+    def _compute_sampled_event_N_eff(self, logweights, weights, N=None):
+        N = N or logweights.shape[-1]
+        log_mu = jax.scipy.special.logsumexp(logweights, axis=-1) # E x K
+        mu = jnp.exp(log_mu) # E x K
+        mu_squared = jnp.exp(jax.scipy.special.logsumexp(2*logweights , axis=-1)) # E x K
+
+        mu = jnp.sum( mu * weights ,axis=-1)
+        mu_squared = jnp.sum( mu_squared * weights, axis=-1)
+        N_eff = mu**2 / mu_squared # E x K
+        N_eff = jnp.min(jnp.exp(log_N_eff), axis=-1)
+        return log_mu- jnp.log(N), N_eff
     
     @staticmethod
     def aggregate_kernels(data, loglikes):
         weights = data['weights'] # E x K
         return jax.scipy.special.logsumexp( loglikes + jnp.log(weights), axis=-1) # E
 
-    def analytic_event_bayes_factors(self, data, params, detection_efficiency=1):
+    def analytic_event_bayes_factors(self, data, params, detection_ratio=1):
         if len(self.analytic_models) == 0:
             return 0.0
         loglikes = sum(self.log(model(data, params)) for model in self.analytic_models) # E x K
-        return self.aggregate_kernels(data, loglikes) + jnp.log(detection_efficiency)
+        return self.aggregate_kernels(data, loglikes) + jnp.log(detection_ratio)
     
     def sampled_event_bayes_factors(self, data, params, N=None):
         if len(self.sampled_models) == 0:
@@ -103,12 +117,15 @@ class HybridPopulationLikelihood:
         # Selection Likelihood
         loglikes_selection = 0.0
         if self.selection_data:
-            loglikes_selection += self.total_event_bayes_factors(self.selection_data, params, N=self.selection, detection_efficiency=self.detection_efficiency)
+            loglikes_selection += self.total_event_bayes_factors(self.selection_data, 
+                                                                 params, N=self.selection, 
+                                                                 detection_ratio=self.detection_ratio)
         
         return loglikes_event.sum() - self.N_events * loglikes_selection
 
     @classmethod
-    def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, SelectionClass=SelectionFunction):
+    def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
+                       SelectionClass=SelectionFunction, enforce_convergence=False):
         event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
         selection_attributes = load_hdf5_attributes(selection_data_filename)
@@ -128,4 +145,4 @@ class HybridPopulationLikelihood:
                                    selection_attributes['analysis_time'],
                                    selection_attributes['total_generated'],
                                    redshift_model)
-        return cls(sampled_models, analytic_models, event_data, selection)
+        return cls(sampled_models, analytic_models, event_data, selection, enforce_convergence)

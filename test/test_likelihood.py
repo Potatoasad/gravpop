@@ -24,17 +24,15 @@ def test_likelihood_sampled():
 
 
 	event_data = {'x': x_data, # 10 events, 1 kernels, 1000 points each
-								'weights': jnp.ones((E,K))/K}
+				  'weights': jnp.ones((E,K))/K}
 
 	HL = HybridPopulationLikelihood(sampled_models=[TG], event_data=event_data, analytic_models=[])
 
 
 
-	Samp = Sampler(priors = {'mu' : dist.Normal(0,3),  
-														'sigma' : dist.Uniform(0,4)}, 
-									latex_symbols = {'mu' : r'$\mu$', 
-																	 'sigma' : r'$\sigma$'} , 
-									likelihood=HL, num_samples=2000, num_warmup=1000)
+	Samp = Sampler(priors = {'mu' : dist.Normal(0,3), 'sigma' : dist.Uniform(0,4)}, 
+				   latex_symbols = {'mu' : r'$\mu$','sigma' : r'$\sigma$'} , 
+				   likelihood=HL, num_samples=2000, num_warmup=1000)
 
 	Samp.sample();
 

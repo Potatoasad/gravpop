@@ -19,7 +19,7 @@ def mu_var_max_to_alpha_beta_max(mu, var, amax):
     return alpha, beta, amax
 
 
-class GaussianIsotropicSpinOrientationsIID(AbstractSpinPopulationModel):
+class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
 	Performs a monte carlo estimate of the population likelihood. 
@@ -49,7 +49,7 @@ class GaussianIsotropicSpinOrientationsIID(AbstractSpinPopulationModel):
 
 
 
-class BetaSpinMagnitudeIID(AbstractSpinPopulationModel):
+class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
 	Performs a monte carlo estimate of the population likelihood. 

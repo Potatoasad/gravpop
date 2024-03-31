@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from .abstract import *
 from ..utils import *
 
-class Gaussian1D(AbstractPopulationModel):
+class Gaussian1D(SampledPopulationModel):
     r"""
     Gaussian Distribution. Performs a monte carlo estimate of the population likelihood. 
 

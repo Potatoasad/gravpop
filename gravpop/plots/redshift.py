@@ -31,7 +31,7 @@ class RedshiftPlot:
         self.redshift_grid = self.redshift_grid or DEFAULT_GRID
         data = self.redshift_grid.data
         compute_rate = lambda data,x : (1+data['redshift'])**(x[self.model.hyper_var_names[0]])
-        self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk)
+        self._vmapped_func = chunked_vmap( lambda x: self.model.evaluate(data, x), in_axes=(self._shapes,), chunk=self.chunk)
         progress_title = "Computing Redshift Model on the Grid"
         self._vmapped_func_rate = chunked_vmap( lambda x: compute_rate(data, x), in_axes=(self._shapes,), chunk=self.chunk, progress_note=progress_title)
         self.result = None

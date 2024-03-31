@@ -68,15 +68,23 @@ class HyperPosterior:
 		#print("making plots")
 		if self.mass_model is not None:
 			self.mass_plot = MassPlot(self.posterior_dict, model=self.mass_model)
+		else:
+			self.mass_plot = None
 
 		if self.redshift_model is not None:
 			self.redshift_plot = RedshiftPlot(self.posterior_dict, model=self.redshift_model)
+		else:
+			self.redshift_plot = None
 
 		if self.spin_magnitude_model is not None:
 			self.spin_magnitude_plot = SpinMagintudePlot(self.posterior_dict, model=self.spin_magnitude_model)
+		else:
+			self.spin_magnitude_plot = None
 
 		if self.spin_orientation_model is not None:
 			self.spin_orientation_plot = SpinOrientationPlot(self.posterior_dict, model=self.spin_orientation_model)
+		else:
+			self.spin_orientation_plot = None
 		#print("finished making posterior")
 
 		if self.LVK_posterior_file:

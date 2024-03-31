@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from ..utils import *
 from ..generic import *
 
-class TruncatedGaussian1D(AbstractPopulationModel):
+class TruncatedGaussian1D(SampledPopulationModel):
     r"""
     Truncated Gaussian Distribution. Performs a monte carlo estimate of the population likelihood. 
 
@@ -71,7 +71,7 @@ def loglikelihood_kernel1d(x, dx, mu, sigma, a, b):
     return logA + logB
 
 
-class TruncatedGaussian1DAnalytic:
+class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
     r"""
     Truncated Gaussian Distribution. Evaluates an analytical expression for the population likelihood of a truncated
     gaussian distribution evaluated over data distributed as a truncated gaussian as well. Useful when our data is represented as a truncated gaussian mixture. 
@@ -97,6 +97,17 @@ class TruncatedGaussian1DAnalytic:
         mu          = params[self.mu_name]
         sigma       = params[self.sigma_name]
         return X_locations, X_scales, mu, sigma
+
+    def evaluate(self, data, params):
+        """
+        Evaluates the value of the *integrand* and not the integral
+        """
+        Xs          = data[self.var_name];
+        mu          = params[self.mu_name]
+        sigma       = params[self.sigma_name];
+        #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
+        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b).mean(axis=-1)
+        return prob
         
     def __call__(self, data, params):
         X_locations, X_scales, mu, sigma = self.get_data(data, params);

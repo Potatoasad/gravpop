@@ -138,7 +138,8 @@ class PopulationLikelihood:
             event_data['mass_1_source'] = event_data['mass_1']
             event_data['chi_1'] = event_data['a_1']
             event_data['chi_2'] = event_data['a_2']
-            print("(N_events, N_samples_per_event) = ", event_data['prior'].shape)
+        print(list(event_data.keys()))
+        print("(N_events, N_samples_per_event) = ", event_data['prior'].shape)
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
         selection_attributes = load_hdf5_attributes(selection_data_filename)
 

@@ -33,7 +33,7 @@ class MassPlot:
         data = self.mass_grid.data
         self.result = None
         progress_title = "Computing Mass Model on the Grid"
-        self._vmapped_func = chunked_vmap( lambda x: self.model(data, x), in_axes=(self._shapes,), chunk=self.chunk, progress_note=progress_title)
+        self._vmapped_func = chunked_vmap( lambda x: self.model.evaluate(data, x), in_axes=(self._shapes,), chunk=self.chunk, progress_note=progress_title)
         self.conf = ((1-self.confidence_interval)/2, self.confidence_interval + (1-self.confidence_interval)/2)
 
     def compute(self):

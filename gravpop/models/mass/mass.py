@@ -1,5 +1,5 @@
 from ..utils import *
-from ..generic import AbstractPopulationModel
+from ..generic import *
 import jax.numpy as jnp
 import jax
 
@@ -19,7 +19,7 @@ def two_component_single(mass, alpha, lam, mmin, mmax, mpp, sigpp, gaussian_mass
     prob = (1 - lam) * p_pow + lam * p_norm
     return prob
 
-class SmoothedTwoComponentPrimaryMassRatio(AbstractPopulationModel):
+class SmoothedTwoComponentPrimaryMassRatio(SampledPopulationModel, MassPopulationModel):
     def __init__(self, gaussian_mass_maximum=100, mmin_fixed=2, mmax_fixed=100, 
         primary_mass_name=None, mass_ratio_name=None, 
         normalization_shape=(1000,500), var_names=['mass_1', 'mass_ratio'],

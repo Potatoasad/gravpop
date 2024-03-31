@@ -46,6 +46,8 @@ class Sampler:
         self.x = {}
         self._samples = None
         self.samples = None
+        if self.constraints is None:
+            self.constraints = []
     
     def model(self):
         for var,dist in self.priors.items():

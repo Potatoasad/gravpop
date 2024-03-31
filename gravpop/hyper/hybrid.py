@@ -4,6 +4,7 @@ from ..models.utils import *
 from .selection import SelectionFunction
 from ..models.redshift import Redshift
 from ..utils import *
+from .expectation import *
 import numpy as np
 
 
@@ -17,12 +18,14 @@ class HybridPopulationLikelihood:
     analytic_models:  List  # List of population models evaluated analytically
     event_data:       Dict[str, jax.Array] = field(repr=False)    # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
     selection_data:   Optional[Union[Dict[str, jax.Array], SelectionFunction]] = field(default=None, repr=False)   # Dictionary of data e.g. {'mass_1' : jnp.array([21.2, 23.0, ...], ....)}
+    event_expectation: Optional[AbstractExpectation] = field(default=HybridEventExpectation())
+    selection_expectation: Optional[AbstractExpectation] = field(default=HybridSelectionExpectation())
     enforce_convergence : Optional[bool] = False
     
     def __post_init__(self):
         if not ('weights' in self.event_data):
             raise ValueError("Expected 'weights' key in the event_data dictionary")
-        self.N_events = self.event_data['weights'].shape[-1]
+        self.N_events = self.event_data['weights'].shape[0]
 
         if "prior" not in self.event_data:
             keyvalues = list(self.event_data.items())
@@ -109,18 +112,61 @@ class HybridPopulationLikelihood:
             log_priors = self.log(data["prior"])
         loglikes = jax.scipy.special.logsumexp( loglikes - log_priors, axis=-1) - jnp.log(N)
         return self.aggregate_kernels(data, loglikes)
+
+    def selection_cut(self, loglikes, N_eff):
+        #print(N_eff)
+        return jnp.where(N_eff > 4*self.N_events, loglikes, -jnp.nan_to_num(jnp.inf) * jnp.ones_like(loglikes))
+
+    def event_cut(self, loglikes, N_eff):
+        #print(N_eff, self.N_events, jnp.min(N_eff))
+        return jnp.where(jnp.min(N_eff) > self.N_events, loglikes, -jnp.nan_to_num(jnp.inf) * jnp.ones_like(loglikes))
+
+    def log_bayes_factors_event(self, params):
+        sampled_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.sampled_models) - self.log(self.event_data["prior"])
+        ## Event analytic:
+        analytic_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.analytic_models)
+        loglikes_event = self.event_expectation.log_bayes_factors(sampled_logweights=sampled_logweights_event, 
+                                                                  analytic_logweights=analytic_logweights_event, 
+                                                                  weights=self.event_data["weights"])
+        if self.enforce_convergence:
+            N_eff_events = self.event_expectation.N_eff(sampled_logweights=sampled_logweights_event, 
+                                                        analytic_logweights=analytic_logweights_event, 
+                                                        weights=self.event_data["weights"],
+                                                        mu = jnp.exp(loglikes_event))
+
+            return self.event_cut(loglikes_event, N_eff_events)
+
+
+        return loglikes_event
+
+    def log_bayes_factors_selection(self, params):
+        data = self.selection_data.selection_data
+        sampled_logweights_selection = sum(self.log(model(data, params)) for model in self.sampled_models) - self.log(data["prior"])
+        analytic_logweights_selection = sum(self.log(model(data, params)) for model in self.analytic_models)
+        loglikes_selection = self.selection_expectation.log_bayes_factors(sampled_logweights=sampled_logweights_selection, 
+                                                                          analytic_logweights=analytic_logweights_selection, 
+                                                                          weights=data["weights"])
+
+        if self.enforce_convergence:
+            N_eff_selection = self.selection_expectation.N_eff(sampled_logweights=sampled_logweights_selection, 
+                                                                analytic_logweights=analytic_logweights_selection, 
+                                                                weights=data["weights"],
+                                                                mu = jnp.exp(loglikes_selection),
+                                                                total_generated=self.selection_data.total_generated)
+            return self.selection_cut(loglikes_selection, N_eff_selection)
+
+
+        return loglikes_selection
     
     def logpdf(self, params):
         # Event Likelihoods
-        loglikes_event = self.total_event_bayes_factors(self.event_data, params)
-        
+        loglikes_event = self.log_bayes_factors_event(params)
+                
         # Selection Likelihood
         loglikes_selection = 0.0
         if self.selection_data:
-            loglikes_selection += self.total_event_bayes_factors(self.selection_data, 
-                                                                 params, N=self.selection, 
-                                                                 detection_ratio=self.detection_ratio)
-        
+            loglikes_selection += self.log_bayes_factors_selection(params)
+
         return loglikes_event.sum() - self.N_events * loglikes_selection
 
     @classmethod
@@ -145,4 +191,5 @@ class HybridPopulationLikelihood:
                                    selection_attributes['analysis_time'],
                                    selection_attributes['total_generated'],
                                    redshift_model)
-        return cls(sampled_models, analytic_models, event_data, selection, enforce_convergence)
+        return cls(sampled_models=sampled_models, analytic_models=analytic_models, event_data=event_data, 
+                  selection_data=selection, enforce_convergence=enforce_convergence)

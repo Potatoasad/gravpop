@@ -14,12 +14,12 @@ class TruncatedGaussian1D(SampledPopulationModel):
     
         P(x | \mu, \sigma) = \mathcal{N}_{[a,b]}))(x | \mu, \sigma) 
     """
-    def __init__(self, a, b, var_name='x', mu_name='mu', sigma_name='sigma'):
+    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
         self.a = a
         self.b = b
-        self.var_name = var_name
-        self.mu_name = mu_name
-        self.sigma_name = sigma_name
+        self.var_name = var_names[0]
+        self.mu_name = hyper_var_names[0]
+        self.sigma_name = hyper_var_names[1]
         
     def get_data(self, data, params):
         Xs          = data[self.var_name];
@@ -84,12 +84,12 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
     
         P(x | \mu, \sigma) = \mathcal{N}_{[a,b]}))(x | \mu, \sigma) \textrm{ where } x \sim \mathcal{N}_{[a,b]}(x_0, \Delta x)
     """
-    def __init__(self, a, b, var_name='x', mu_name='mu', sigma_name='sigma'):
+    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
         self.a = a
         self.b = b
-        self.var_name = var_name
-        self.mu_name = mu_name
-        self.sigma_name = sigma_name
+        self.var_name = var_names[0]
+        self.mu_name = hyper_var_names[0]
+        self.sigma_name = hyper_var_names[1]
         
     def get_data(self, data, params):
         X_locations = data[self.var_name + '_mu_kernel'];
@@ -113,3 +113,19 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         X_locations, X_scales, mu, sigma = self.get_data(data, params);
         loglikes = loglikelihood_kernel1d(X_locations, X_scales, mu, sigma, self.a, self.b)
         return jnp.exp(loglikes)
+
+
+
+class IIDTruncatedGaussian1DAnalytic(AnalyticPopulationModel):
+    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        kwargs = {'a' : a, 'b' : b, 'hyper_var_names' : hyper_var_names}
+        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_name], **kwargs) for var_name in self.var_names]
+
+    def __call__(self, data, params):
+        return jnp.exp( sum( jnp.log(model(data, params)) for model in self.models ) )
+
+    def evaluate(self, data, params):
+        return jnp.exp( sum( jnp.log(model.evaluate(data, params)) for model in self.models ) )
+

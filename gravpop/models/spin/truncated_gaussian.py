@@ -5,7 +5,7 @@ from ..generic import *
 
 class TruncatedGaussian1D(SampledPopulationModel):
     r"""
-    Truncated Gaussian Distribution. Performs a monte carlo estimate of the population likelihood. 
+    Truncated Gaussian Distribution. 
 
     Event Level Parameters:         :math:`x`
     Population Level Parameters:    :math:`\mu, \sigma` 
@@ -30,7 +30,7 @@ class TruncatedGaussian1D(SampledPopulationModel):
     def __call__(self, data, params):
         Xs, mu, sigma = self.get_data(data, params);
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
-        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b).mean(axis=-1)
+        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b)
         return prob
 
 
@@ -106,7 +106,7 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         mu          = params[self.mu_name]
         sigma       = params[self.sigma_name];
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
-        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b).mean(axis=-1)
+        prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b)
         return prob
         
     def __call__(self, data, params):
@@ -124,8 +124,36 @@ class IIDTruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         self.models = [TruncatedGaussian1DAnalytic(var_names=[var_name], **kwargs) for var_name in self.var_names]
 
     def __call__(self, data, params):
-        return jnp.exp( sum( jnp.log(model(data, params)) for model in self.models ) )
+        result = self.models[0](data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i](data, params)
+        return result
 
     def evaluate(self, data, params):
-        return jnp.exp( sum( jnp.log(model.evaluate(data, params)) for model in self.models ) )
+        result = self.models[0].evaluate(data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i].evaluate(data, params)
+        return result
+
+
+class TruncatedGaussian1DIndependentAnalytic(AnalyticPopulationModel, SpinPopulationModel):
+    def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2']):
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        kwargs = {'a' : a, 'b' : b}
+        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_names[i]], 
+                                                   hyper_var_names=[hyper_var_names[2*i], hyper_var_names[2*i + 1]], 
+                                                   **kwargs) for i in range(len(self.var_names))]
+
+    def __call__(self, data, params):
+        result = self.models[0](data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i](data, params)
+        return result
+
+    def evaluate(self, data, params):
+        result = self.models[0].evaluate(data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i].evaluate(data, params)
+        return result
 

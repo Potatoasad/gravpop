@@ -36,6 +36,7 @@ class HyperPosterior:
 			self.mass_model = self.models.get('mass', None)
 			self.redshift_model = self.models.get('redshift', None)
 			self.spin_magnitude_model = self.models.get('spin_magnitude', None)
+			self.spin_orientation_model = self.models.get('spin_orientation', None)
 
 		if self.mass_model is None:
 			possible_models = [model for model in self.likelihood.models if any([isinstance(model, test_model) for test_model in MASS_MODELS])]

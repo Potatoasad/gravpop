@@ -157,3 +157,113 @@ class TruncatedGaussian1DIndependentAnalytic(AnalyticPopulationModel, SpinPopula
             result *= self.models[i].evaluate(data, params)
         return result
 
+
+
+
+import jax
+import jax.numpy as jnp
+from typing import Union, List, Dict
+from dataclasses import dataclass, field
+
+@dataclass(frozen=True)
+class CovarianceMatrix2D:
+    s1  : Union[jax.Array,float]
+    s2  : Union[jax.Array,float]
+    rho : Union[jax.Array,float]
+    
+    def inv(self):
+        rhom1 = jnp.sqrt(1-self.rho**2)
+        s1_ = 1 / ( self.s1 * rhom1 )
+        s2_ = 1 / ( self.s2 * rhom1 )
+        rho_ = -self.rho
+        return CovarianceMatrix2D(s1_, s2_, rho_)
+    
+    def __add__(self, other):
+        s1_ = jnp.sqrt(self.s1**2 + other.s1**2)
+        s2_ = jnp.sqrt(self.s2**2 + other.s2**2)
+        rho_ =  self.rho * self.s1 * self.s2
+        rho_ += other.rho * other.s1 * other.s2
+        rho_ /= s1_ * s2_
+        return CovarianceMatrix2D(s1_, s2_, rho_)
+    
+    def unpack(self):
+        return self.s1, self.s2, self.rho
+    
+    
+@dataclass(frozen=True)
+class Vector2D:
+    x1  : Union[jax.Array,float]
+    x2  : Union[jax.Array,float]
+    
+    def __rmul__(self, cov_matrix):
+        s1, s2, rho = cov_matrix.unpack()
+        x1_ = s1**2 * self.x1 + rho * s1 * s2 * self.x2
+        x2_ = rho * s1 * s2 * self.x1 + s2**2 * self.x2
+        return Vector2D(x1_, x2_)
+    
+    def __add__(self, vector):
+        return Vector2D(self.x1 + vector.x1, self.x2 + vector.x2)
+    
+    
+    
+def probability_mass(Mu, Sigma, a=[0,0], b=[1,1]):
+    return mvnorm2d(Mu.x1, Mu.x2, Sigma.s1, Sigma.s2, a[0], a[1], b[0], b[1], Sigma.rho)
+
+@dataclass(frozen=True)
+class TruncatedNormal2D:
+    mu : Vector2D
+    sigma : CovarianceMatrix2D
+    a : List[float] = field(default_factory=lambda: [0.0, 0.0])
+    b : List[float] = field(default_factory=lambda: [1.0, 1.0])
+    
+    def probability_mass(self):
+        return probability_mass(self.mu, self.sigma, a=self.a, b=self.b)
+
+
+
+
+
+#probability_mass(mu, sigma, a=a, b=b)
+
+def transform_component(mu_1, sigma_1, mu_2, sigma_2):
+    Lambda_1 = sigma_1.inv()
+    Lambda_2 = sigma_2.inv()
+    sigma_ = (Lambda_1 + Lambda_2).inv()    
+    mu_ = sigma_ * ( Lambda_1 * mu_1 + Lambda_2 * mu_2 )
+    return mu_, sigma_
+
+
+@jit
+def compute_likelihood(mu_11=0.0, mu_12=0.0, mu_21=0.0, mu_22=0.0,
+                       sigma_11=1.0, sigma_12=1.0, sigma_21=1.0, sigma_22=1.0,
+                       rho_1=0.0, rho_2=0.0, a=[0.0, 0.0], b=[1.0, 1.0]):
+    mu_1 = Vector2D(mu_11, mu_12)
+    sigma_1 = CovarianceMatrix2D(sigma_11, sigma_12, rho_1)
+    mu_2 = Vector2D(mu_21, mu_22)
+    sigma_2 = CovarianceMatrix2D(sigma_21, sigma_22, rho_2)
+    mu_, sigma_ = transform_component(mu_1, sigma_1, mu_2, sigma_2)
+    final_prob  = probability_mass(mu_, sigma_, a=a, b=b)
+    final_prob /= probability_mass(mu_1, sigma_1, a=a, b=b)
+    final_prob /= probability_mass(mu_2, sigma_2, a=a, b=b)
+    ## add part to compute loglikelihood here 
+    return final_prob
+
+
+#compute_likelihood(mu_11=jnp.array([0.1, 0.0]), mu_12=jnp.array([0.1, 0.4]), 
+#                   sigma_11=jnp.array([0.1, 0.6]), sigma_12=jnp.array([0.1, 0.6]),
+#                   rho_1=jnp.array([0.1, 0.0]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

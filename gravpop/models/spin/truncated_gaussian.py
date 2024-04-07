@@ -115,50 +115,12 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         return jnp.exp(loglikes)
 
 
+class TruncatedGaussian1DAnalyticSpin(TruncatedGaussian1DAnalytic, SpinPopulationModel):
+    pass
 
-class IIDTruncatedGaussian1DAnalytic(AnalyticPopulationModel):
-    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
-        self.var_names = var_names
-        self.hyper_var_names = hyper_var_names
-        kwargs = {'a' : a, 'b' : b, 'hyper_var_names' : hyper_var_names}
-        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_name], **kwargs) for var_name in self.var_names]
-
-    def __call__(self, data, params):
-        result = self.models[0](data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i](data, params)
-        return result
-
-    def evaluate(self, data, params):
-        result = self.models[0].evaluate(data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i].evaluate(data, params)
-        return result
-
-
-class TruncatedGaussian1DIndependentAnalytic(AnalyticPopulationModel, SpinPopulationModel):
-    def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2']):
-        self.var_names = var_names
-        self.hyper_var_names = hyper_var_names
-        kwargs = {'a' : a, 'b' : b}
-        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_names[i]], 
-                                                   hyper_var_names=[hyper_var_names[2*i], hyper_var_names[2*i + 1]], 
-                                                   **kwargs) for i in range(len(self.var_names))]
-
-    def __call__(self, data, params):
-        result = self.models[0](data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i](data, params)
-        return result
-
-    def evaluate(self, data, params):
-        result = self.models[0].evaluate(data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i].evaluate(data, params)
-        return result
-
-
-
+#########################################################################
+### Truncated 2D Gaussian
+########################################################################
 
 import jax
 import jax.numpy as jnp
@@ -189,6 +151,11 @@ class CovarianceMatrix2D:
     def unpack(self):
         return self.s1, self.s2, self.rho
     
+    @property
+    def value(self):
+        s1,s2,rho = self.unpack()
+        return jnp.array([[s1**2, s1*s2*rho],[s1*s2*rho, s2**2]])
+    
     
 @dataclass(frozen=True)
 class Vector2D:
@@ -203,6 +170,12 @@ class Vector2D:
     
     def __add__(self, vector):
         return Vector2D(self.x1 + vector.x1, self.x2 + vector.x2)
+    
+    @property
+    def value(self):
+        x1 = self.x1
+        x2 = self.x2
+        return jnp.array([x1, x2])
     
     
     
@@ -221,16 +194,30 @@ class TruncatedNormal2D:
 
 
 
-
-
-#probability_mass(mu, sigma, a=a, b=b)
-
 def transform_component(mu_1, sigma_1, mu_2, sigma_2):
     Lambda_1 = sigma_1.inv()
     Lambda_2 = sigma_2.inv()
     sigma_ = (Lambda_1 + Lambda_2).inv()    
     mu_ = sigma_ * ( Lambda_1 * mu_1 + Lambda_2 * mu_2 )
     return mu_, sigma_
+
+def make_cov(sig_1, sig_2, rho):
+    return jnp.stack([jnp.stack([sig_1**2, sig_1*sig_2*rho],axis=-1)
+                     ,jnp.stack([sig_1*sig_2*rho, sig_2**2],axis=-1)], axis=-1)
+
+
+multivariate_normal_pdf = jax.vmap(jax.scipy.stats.multivariate_normal.pdf, in_axes=(0, 0, 0))
+
+def compute_normal_pdf(mu_11, mu_12, sig_11, sig_12, rho_1,
+                        mu_21, mu_22, sig_21, sig_22, rho_2):
+    argss = (mu_11, mu_12, sig_11, sig_12, rho_1, mu_21, mu_22, sig_21, sig_22, rho_2)
+    #for a in argss:
+    #    print(a)
+    mu_1 = jnp.stack([mu_11, mu_12], axis=-1);
+    mu_2 = jnp.stack([mu_21, mu_22], axis=-1);
+    sig_1 = make_cov(sig_11, sig_12, rho_1)#jnp.stack([jnp.stack([sig_11**2, sig_11*sig_12*rho_1]),jnp.stack([sig_11*sig_12*rho_1, sig_12**2])])
+    sig_2 = make_cov(sig_21, sig_22, rho_2)#jnp.stack([jnp.stack([sig_21**2, sig_21*sig_22*rho_2]),jnp.stack([sig_21*sig_22*rho_2, sig_22**2])])
+    return jax.scipy.stats.multivariate_normal.pdf(mu_1, mu_2, sig_1 + sig_2)
 
 
 @jit
@@ -246,24 +233,44 @@ def compute_likelihood(mu_11=0.0, mu_12=0.0, mu_21=0.0, mu_22=0.0,
     final_prob /= probability_mass(mu_1, sigma_1, a=a, b=b)
     final_prob /= probability_mass(mu_2, sigma_2, a=a, b=b)
     ## add part to compute loglikelihood here 
+    final_prob *= compute_normal_pdf(mu_1.x1, mu_1.x2, sigma_1.s1, sigma_1.s2, sigma_1.rho,
+                                     mu_2.x1, mu_2.x2, sigma_2.s1, sigma_2.s2, sigma_2.rho)
     return final_prob
 
 
-#compute_likelihood(mu_11=jnp.array([0.1, 0.0]), mu_12=jnp.array([0.1, 0.4]), 
-#                   sigma_11=jnp.array([0.1, 0.6]), sigma_12=jnp.array([0.1, 0.6]),
-#                   rho_1=jnp.array([0.1, 0.0]))
+class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
+    def __init__(self, a=[0.0, 0.0], b=[1.0, 1.0], var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2', 'rho_chi']):
+        self.a = a
+        self.b = b
+        self.var_name_1 = var_names[0]
+        self.mu_name_1 = hyper_var_names[0]
+        self.sigma_name_1 = hyper_var_names[1]
+        self.var_name_2 = var_names[1]
+        self.mu_name_2 = hyper_var_names[2]
+        self.sigma_name_2 = hyper_var_names[3]
+        self.rho_name = hyper_var_names[4]
+        
+    def get_data(self, data, params, component):
+        var_name = self.var_name_1 if (component == 1) else self.var_name_2
+        mu_name = self.mu_name_1 if (component == 1) else self.mu_name_2
+        sigma_name = self.sigma_name_1 if (component == 1) else self.sigma_name_2
+        X_locations = data[var_name + '_mu_kernel'];
+        X_scales    = data[var_name + '_sigma_kernel'];
+        mu          = params[mu_name]
+        sigma       = params[sigma_name]
+        return X_locations, X_scales, mu, sigma
+    
+    def __call__(self, data, params):
+        X_locations_1, X_scales_1, mu_1, sigma_1 = self.get_data(data, params, component=1);
+        X_locations_2, X_scales_2, mu_2, sigma_2 = self.get_data(data, params, component=2);
+        rho = params[self.rho_name]
+        rho_kernel = data.get(self.var_name_1 + "_rho_kernel", jnp.zeros_like(data[self.var_name_1 + "_mu_kernel"]))
+        return compute_likelihood(mu_11=X_locations_1, mu_12=X_locations_2, 
+                                   mu_21=mu_1, mu_22=mu_2,
+                                   sigma_11=X_scales_1, sigma_12=X_scales_2, 
+                                   sigma_21=sigma_1, sigma_22=sigma_2,
+                                   rho_1=rho_kernel, rho_2=rho, a=self.a, b=self.b)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+class TruncatedGaussian2DAnalyticSpin(TruncatedGaussian2DAnalytic, SpinPopulationModel):
+    pass

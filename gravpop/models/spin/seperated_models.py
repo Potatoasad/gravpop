@@ -1,8 +1,6 @@
 import jax
 import jax.numpy as jnp
-from .truncated_gaussian import *
-from .analytic_models import *
-
+from ..generic import *
 
 class MixtureTruncatedGaussian1DFixedZero(AnalyticPopulationModel, SpinPopulationModel):
     def __init__(self, a, b, var_names=['chi_1'], hyper_var_names=['mu_chi_a', 'sigma_chi_a', 'sigma_chi_b', 'eta']):

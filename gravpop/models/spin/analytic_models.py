@@ -2,7 +2,6 @@ import jax
 import jax.numpy as jnp
 from ..utils import *
 from ..generic import *
-from .truncated_gaussian import *
 
 
 class GaussianIsotropicSpinOrientationsIIDAnalytic(AnalyticPopulationModel, SpinPopulationModel):

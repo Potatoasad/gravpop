@@ -10,6 +10,7 @@ import scipy
 import pytest
 
 def test_covariance():
-	sig_1, sig_2, rho = 1.2, 3.1, 0.1
+	sig_1, sig_2, rho = np.random.rand()*3, np.random.rand()*3, (np.random.rand()*2 - 1)
 	Sigma_mat = np.array([[sig_1**2, sig_1*sig_2*rho],[sig_1*sig_2*rho, sig_2**2]])
 	Sigma_test = CovarianceMatrix2D(sig_1, sig_2, rho)
+	assert np.abs(np.linalg.det(np.linalg.inv(Sigma_mat) - Sigma_test.inv().value))

@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import astropy
 from astropy.cosmology import Planck15
-from ..generic import *
+from ..generic import SampledPopulationModel, RedshiftPopulationModel
 from ..utils import box
 
 class Redshift(SampledPopulationModel, RedshiftPopulationModel):
@@ -122,7 +122,7 @@ class Redshift(SampledPopulationModel, RedshiftPopulationModel):
         return jnp.nan_to_num(self.probability(data, params),nan=0)
 
     def total_four_volume(self, params, analysis_time):
-        return self.normalization(parameters) / 1e9 * analysis_time
+        return self.normalization(params) / 1e9 * analysis_time
 
 
 class PowerLawRedshift(Redshift):

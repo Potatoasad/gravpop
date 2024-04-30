@@ -1,7 +1,7 @@
 import h5py
 import jax.numpy as jnp
 
-def load_hdf5_to_jax_dict(filename):
+def load_hdf5_to_jax_dict(filename, ignore_events=[]):
     data = {}
     with h5py.File(filename, 'r') as f:
         for event_name, event_group in f.items():

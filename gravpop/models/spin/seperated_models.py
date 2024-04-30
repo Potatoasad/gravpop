@@ -15,6 +15,10 @@ class MixtureTruncatedGaussian1DFixedZero(AnalyticPopulationModel, SpinPopulatio
                                                    hyper_var_names=['mu_zero_spin_1d_fixed', hyper_var_names[2]], 
                                                    **kwargs),]
 
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
     def __call__(self, data, params):
         params['mu_zero_spin_1d_fixed'] = 0.0
         result  =      params[self.eta_variable]  * self.models[0](data, params)
@@ -42,6 +46,10 @@ class TruncatedGaussian1DMixtureChi1StandardChi2(AnalyticPopulationModel, SpinPo
 
         self.models = [MixtureTruncatedGaussian1DFixedZero(var_names=chi_1_var_names, hyper_var_names=chi_1_hyper_var_names, a=a[0], b=b[0]),
                        TruncatedGaussian1DAnalytic(var_names=chi_2_var_names, hyper_var_names=chi_2_hyper_var_names, a=a[1], b=b[1])]
+
+    @property
+    def limits(self):
+        return {var : [self.a[i], self.b[i]] for i,var in enumerate(self.var_names)}
 
     def __call__(self, data, params):
         result = self.models[0](data, params)

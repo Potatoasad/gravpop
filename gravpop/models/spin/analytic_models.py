@@ -23,6 +23,10 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic(AnalyticPopulationModel, Spin
 		self.hyper_var_names = hyper_var_names
 		self.models = [TruncatedGaussian1DAnalytic(a=a, b=b, var_names=[var_names[i]], hyper_var_names=['mu_spin', hyper_var_names[1]]) for i in range(len(var_names))]
 
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
 	def evaluate(self, data, params):
 		xi_spin = params[self.hyper_var_names[0]]
 		sigma_spin = params[self.hyper_var_names[1]]
@@ -44,42 +48,50 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic(AnalyticPopulationModel, Spin
 
 
 class IIDTruncatedGaussian1DAnalytic(AnalyticPopulationModel):
-    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
-        self.var_names = var_names
-        self.hyper_var_names = hyper_var_names
-        kwargs = {'a' : a, 'b' : b, 'hyper_var_names' : hyper_var_names}
-        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_name], **kwargs) for var_name in self.var_names]
+	def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
+		self.var_names = var_names
+		self.hyper_var_names = hyper_var_names
+		kwargs = {'a' : a, 'b' : b, 'hyper_var_names' : hyper_var_names}
+		self.models = [TruncatedGaussian1DAnalytic(var_names=[var_name], **kwargs) for var_name in self.var_names]
 
-    def __call__(self, data, params):
-        result = self.models[0](data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i](data, params)
-        return result
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
 
-    def evaluate(self, data, params):
-        result = self.models[0].evaluate(data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i].evaluate(data, params)
-        return result
+	def __call__(self, data, params):
+		result = self.models[0](data, params)
+		for i in range(1,len(self.models)):
+			result *= self.models[i](data, params)
+		return result
+
+	def evaluate(self, data, params):
+		result = self.models[0].evaluate(data, params)
+		for i in range(1,len(self.models)):
+			result *= self.models[i].evaluate(data, params)
+		return result
 
 
 class TruncatedGaussian1DIndependentAnalytic(AnalyticPopulationModel, SpinPopulationModel):
-    def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2']):
-        self.var_names = var_names
-        self.hyper_var_names = hyper_var_names
-        kwargs = {'a' : a, 'b' : b}
-        self.models = [TruncatedGaussian1DAnalytic(var_names=[var_names[i]], 
-                                                   hyper_var_names=[hyper_var_names[2*i], hyper_var_names[2*i + 1]], 
-                                                   **kwargs) for i in range(len(self.var_names))]
+	def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2']):
+		self.a, self.b = a,b
+		self.var_names = var_names
+		self.hyper_var_names = hyper_var_names
+		kwargs = {'a' : a, 'b' : b}
+		self.models = [TruncatedGaussian1DAnalytic(var_names=[var_names[i]], 
+												   hyper_var_names=[hyper_var_names[2*i], hyper_var_names[2*i + 1]], 
+												   **kwargs) for i in range(len(self.var_names))]
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
 
-    def __call__(self, data, params):
-        result = self.models[0](data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i](data, params)
-        return result
+	def __call__(self, data, params):
+		result = self.models[0](data, params)
+		for i in range(1,len(self.models)):
+			result *= self.models[i](data, params)
+		return result
 
-    def evaluate(self, data, params):
-        result = self.models[0].evaluate(data, params)
-        for i in range(1,len(self.models)):
-            result *= self.models[i].evaluate(data, params)
-        return result
+	def evaluate(self, data, params):
+		result = self.models[0].evaluate(data, params)
+		for i in range(1,len(self.models)):
+			result *= self.models[i].evaluate(data, params)
+		return result

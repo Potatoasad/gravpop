@@ -12,6 +12,15 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Union
 from functools import partial
 
+
+def fix_kernels(mus, sigmas, a, b, lower_lim=-4, upper_lim=4, n=10):
+    alphas, betas = (mus - a)/sigmas, (mus - b)/sigmas
+    too_far_left = (alphas < lower_lim) & (betas > 0)
+    too_far_right = (betas > upper_lim) & (alphas > 0)
+    sigmas_fixed = jnp.where(too_far_left | too_far_right, sigmas/jnp.sqrt(n), sigmas) 
+    mus_fixed = jnp.where(too_far_left, a - (a-mus)/n, jnp.where(too_far_right, b + (b-mus)/n, mus))
+    return mus_fixed, sigmas_fixed
+
 @dataclass
 class HybridPopulationLikelihood:
     sampled_models:   List  # List of population models evaluated using monte-carlo
@@ -51,6 +60,20 @@ class HybridPopulationLikelihood:
             self.selection_data = None
 
         self._models = self.sampled_models + self.analytic_models
+
+        self.analytic_limits = {}
+        for model in self.analytic_models:
+            self.analytic_limits.update(model.limits)
+
+        for var in self.analytic_limits.keys():
+            if self.selection_data is not None:
+                sel = self.selection_data.selection_data
+                mus, sigmas = fix_kernels(sel[var + '_mu_kernel'], sel[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
+                self.selection_data.selection_data[var + '_mu_kernel'], self.selection_data.selection_data[var + '_sigma_kernel'] = mus, sigmas
+
+            eventd = self.event_data
+            mus, sigmas = fix_kernels(eventd[var + '_mu_kernel'], eventd[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
+            self.event_data[var + '_mu_kernel'], self.event_data[var + '_sigma_kernel'] = mus, sigmas
 
     @property
     def models(self):
@@ -171,15 +194,8 @@ class HybridPopulationLikelihood:
 
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
-                       SelectionClass=SelectionFunction, enforce_convergence=False):
-        event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
-        selection_data = load_hdf5_to_jax_dict(selection_data_filename)
-        selection_attributes = load_hdf5_attributes(selection_data_filename)
-        if "selection" in selection_data.keys():
-            selection_data = selection_data["selection"]
-
-        if "selection" in selection_attributes.keys():
-            selection_attributes = selection_attributes["selection"]
+                       SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[]):
+        event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
 
         redshift_model = [model for model in sampled_models if isinstance(model, Redshift)]
         redshift_model += [model for model in analytic_models if isinstance(model, Redshift)]
@@ -187,9 +203,21 @@ class HybridPopulationLikelihood:
             redshift_model = None
         else:
             redshift_model = redshift_model[0]
-        selection = SelectionClass(selection_data, 
-                                   selection_attributes['analysis_time'],
-                                   selection_attributes['total_generated'],
-                                   redshift_model)
+
+        if selection_data_filename is not None:
+            selection_data = load_hdf5_to_jax_dict(selection_data_filename)
+            selection_attributes = load_hdf5_attributes(selection_data_filename)
+            if "selection" in selection_data.keys():
+                selection_data = selection_data["selection"]
+
+            if "selection" in selection_attributes.keys():
+                selection_attributes = selection_attributes["selection"]
+
+            selection = SelectionClass(selection_data, 
+                                       selection_attributes['analysis_time'],
+                                       selection_attributes['total_generated'],
+                                       redshift_model)
+        else:
+            selection = None
         return cls(sampled_models=sampled_models, analytic_models=analytic_models, event_data=event_data, 
                   selection_data=selection, enforce_convergence=enforce_convergence)

@@ -13,6 +13,27 @@ DEFAULT_GRID =  Grid([Grid1D(name='chi_1', minimum=0, maximum=1, N=100, latex_na
                       Grid1D(name='chi_2', minimum=0, maximum=1, N=100, latex_name=r"$\chi_2$")])
 
 
+CHI_DEFAULT_GRID =  Grid([Grid1D(name='chi_1', minimum=0, maximum=1, N=100, latex_name=r"$\chi_1$"), 
+                      Grid1D(name='chi_2', minimum=0, maximum=1, N=100, latex_name=r"$\chi_2$")])
+
+A_DEFAULT_GRID =  Grid([Grid1D(name='a_1', minimum=0, maximum=1, N=100, latex_name=r"$a_1$"), 
+                      Grid1D(name='a_2', minimum=0, maximum=1, N=100, latex_name=r"$a_2$")])
+
+
+def has_spin_named_chi(posterior):
+    if isinstance(posterior, pd.DataFrame):
+        cols = list(posterior.columns)
+    else:
+        cols = list(posterior.keys())
+    return any(('chi_1' in col) for col in cols)
+
+def get_spin_mag_grid(posterior):
+    if has_spin_named_chi(posterior):
+        return CHI_DEFAULT_GRID
+    else:
+        return A_DEFAULT_GRID 
+
+
 @dataclass
 class SpinMagintudePlot:
     hyper_posterior_samples : Dict[str, jax.Array] = field(repr=False)
@@ -30,7 +51,7 @@ class SpinMagintudePlot:
         self.hyper_posterior_samples = {col:value[self.index_sampling] for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
         #self.hyper_posterior_samples = {col:value for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
-        self.spin_grid = self.spin_grid or DEFAULT_GRID 
+        self.spin_grid = self.spin_grid or get_spin_mag_grid(self.hyper_posterior_samples)
         data = self.spin_grid.data
         self.result = None
         progress_title = "Computing Spin Magnitude Model on the Grid"
@@ -39,6 +60,8 @@ class SpinMagintudePlot:
 
         spin_1_name = [m.name for m in self.spin_grid.grid_list if "_1" in m.name][0]
         spin_2_name = [m.name for m in self.spin_grid.grid_list if "_2" in m.name][0]
+        self.spin_1_name = spin_1_name
+        self.spin_2_name = spin_2_name
 
         self.spin_1_grid_obj = [m for m in self.spin_grid.grid_list if "_1" in m.name][0]
         self.spin_2_grid_obj = [m for m in self.spin_grid.grid_list if "_2" in m.name][0]
@@ -54,6 +77,29 @@ class SpinMagintudePlot:
     def compute_if_not_computed(self):
         if self.result is None:
             self.compute()
+
+
+    def spin_2D_plot(self, quantiles=[0.05, 0.5, 0.95], dpi=200):
+        self.compute_if_not_computed()
+        spin_all = self.result
+        spin_1s = self.spin_grid.data[self.spin_1_name]
+        spin_2s = self.spin_grid.data[self.spin_2_name]
+        #spin_median = jnp.quantile(spin_all, 0.5, axis=0)
+        #spin_lower = jnp.quantile(spin_all, quantiles[0], axis=0)
+        #spin_upper = jnp.quantile(spin_all, quantiles[1], axis=0)
+
+        import matplotlib.pyplot as plt
+
+        fig, axes = plt.subplots(ncols=len(quantiles), figsize=(5*(len(quantiles)),5), dpi=dpi)
+        for i in range(len(quantiles)):
+            contour_plot = axes[i].contourf(spin_1s, spin_2s, jnp.quantile(spin_all, quantiles[i], axis=0))
+            axes[i].set_title(f"{np.round(quantiles[i]*100, 2)} % Posterior Predictive")
+            plt.colorbar(contour_plot, ax=axes[i])
+            axes[i].set_ylabel(r"$\chi_2$")
+            axes[i].set_xlabel(r"$\chi_1$")
+
+        return fig
+
 
     def spin_marginal_plot(self, spin_1_or_2=1, generic=False, ax=None, aspect=0.5, lower=0, color=None, label=None, alpha=0.3):
         self.compute_if_not_computed()

@@ -34,10 +34,48 @@ class TruncatedGaussian1D(SampledPopulationModel):
         return prob
 
 
-
 from jax import jit
+
 @jit
-def logC(mu, sigma, a , b):
+def logcdf_inside(alpha, beta):
+    return jax.scipy.special.logsumexp(
+                jnp.stack([jax.scipy.stats.norm.logcdf(beta),
+                           jax.scipy.stats.norm.logcdf(alpha)],
+                          axis=-1),
+                b=jnp.array([1,-1]),
+                axis=-1
+            )
+
+@jit
+def logcdf_right(alpha, beta):
+    return jax.scipy.special.logsumexp(
+                jnp.stack([jax.scipy.stats.norm.logcdf(beta),
+                           jax.scipy.stats.norm.logcdf(alpha)],
+                          axis=-1),
+                b=jnp.array([1,-1]),
+                axis=-1
+            )
+
+@jit
+def logcdf_left(alpha, beta):
+    return jax.scipy.special.logsumexp(
+                jnp.stack([jax.scipy.stats.norm.logsf(alpha),
+                           jax.scipy.stats.norm.logsf(beta)],
+                          axis=-1),
+                b=jnp.array([1,-1]),
+                axis=-1
+            )
+
+@jit
+def logC(mu, sigma, a, b):
+    alpha = (a-mu)/sigma
+    beta = (b-mu)/sigma
+    return jnp.where((alpha > 2) & (beta > 2), logcdf_left(alpha, beta), # Way past negative
+                    jnp.where( (alpha < -2) & (beta < -2), logcdf_right(alpha, beta), # Way past positive
+                             logcdf_inside(alpha, beta) )) # Inside
+
+@jit
+def logC_deprecated(mu, sigma, a , b):
     return jax.scipy.special.logsumexp(
                 jnp.stack([jax.scipy.stats.norm.logcdf(b, loc=mu, scale=sigma),
                            jax.scipy.stats.norm.logcdf(a, loc=mu, scale=sigma)],
@@ -90,6 +128,10 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         self.var_name = var_names[0]
         self.mu_name = hyper_var_names[0]
         self.sigma_name = hyper_var_names[1]
+
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
         
     def get_data(self, data, params):
         X_locations = data[self.var_name + '_mu_kernel'];

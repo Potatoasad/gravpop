@@ -157,7 +157,41 @@ def binorm_upper(x1, x2, mu1, mu2, sigma1, sigma2, rho):
 
 
 @jit
+def mvnorm2d_using_lower(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho):
+    #X1 = binorm_lower(b_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)
+    #X0 = binorm_upper(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)
+    #return X0-X1
+    upper_right_lower = binorm_lower(b_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X < b
+    upper_left_lower  = binorm_lower(a_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X < a_up
+    lower_left_lower  = binorm_lower(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X < a
+    lower_right_lower = binorm_lower(b_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X < b_down
+    ## (b - b_down) + (a - a_up)
+    return (upper_right_lower - lower_right_lower) + (lower_left_lower - upper_left_lower)
+
+@jit
+def mvnorm2d_using_upper(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho):
+    #X1 = binorm_lower(b_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)
+    #X0 = binorm_upper(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)
+    #return X0-X1
+    upper_right_upper = binorm_upper(b_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X > b
+    upper_left_upper  = binorm_upper(a_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X > a_up
+    lower_left_upper  = binorm_upper(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X > a
+    lower_right_upper = binorm_upper(b_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)  ## X > b_down
+    ## (b - b_down) + (a - a_up)
+    return (upper_right_upper - lower_right_upper) + (lower_left_upper - upper_left_upper)
+
+
+@jit
 def mvnorm2d(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho):
+    return jnp.where((mu_1 <= b_1) & (mu_2 <= b_2),  mvnorm2d_using_upper(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho), 
+                        jnp.where((mu_1 >= a_1) & (mu_2 >= a_2), mvnorm2d_using_lower(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho),
+                                 jnp.where((mu_1 <= a_1) & (mu_2 >= b_2), mvnorm2d_using_lower(b_1 + a_1 - mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, -rho),
+                                          mvnorm2d_using_upper(b_1 + a_1 - mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, -rho))))
+
+
+
+@jit
+def mvnorm2d_deprecated(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho):
     #X1 = binorm_lower(b_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)
     #X0 = binorm_upper(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)
     #return X0-X1
@@ -165,6 +199,6 @@ def mvnorm2d(mu_1, mu_2, sigma_1, sigma_2, a_1, a_2, b_1, b_2, rho):
     upper_left_lower  = binorm_lower(a_1, b_2, mu_1, mu_2, sigma_1, sigma_2, rho)
     lower_left_lower  = binorm_lower(a_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)
     lower_right_lower = binorm_lower(b_1, a_2, mu_1, mu_2, sigma_1, sigma_2, rho)
-    return (upper_right_lower - lower_right_lower) - (upper_left_lower - lower_left_lower) + 1e-36
+    return (upper_right_lower - lower_right_lower) - (upper_left_lower - lower_left_lower)
 
 

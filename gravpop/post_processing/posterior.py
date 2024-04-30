@@ -12,11 +12,14 @@ BETA_CONVERTER = BetaDistributionConverter()
 
 MASS_MODELS = [SmoothedTwoComponentPrimaryMassRatio]
 
+
 def is_a_spin_magnitude_model(S_mag):
 	return ("spin" in S_mag.__class__.__name__.lower()) and ("magnitude" in S_mag.__class__.__name__.lower())
 
 def is_a_spin_orientation_model(S_orient):
 	return ("spin" in S_orient.__class__.__name__.lower()) and ("orientation" in S_orient.__class__.__name__.lower())
+
+
 
 @dataclass
 class HyperPosterior:

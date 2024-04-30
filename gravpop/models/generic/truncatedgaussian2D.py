@@ -165,6 +165,10 @@ class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
         self.mu_name_2 = hyper_var_names[2]
         self.sigma_name_2 = hyper_var_names[3]
         self.rho_name = hyper_var_names[4]
+
+    @property
+    def limits(self):
+        return {var : [self.a[i], self.b[i]] for i,var in enumerate(self.var_names)}
         
     def get_data(self, data, params, component):
         var_name = self.var_name_1 if (component == 1) else self.var_name_2

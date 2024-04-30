@@ -6,17 +6,17 @@ from ..generic import *
 
 
 def alpha_beta_max_to_mu_var_max(alpha, beta, amax):
-    mu = alpha / (alpha + beta) * amax
-    var = alpha * beta / ((alpha + beta) ** 2 * (alpha + beta + 1)) * amax ** 2
-    return mu, var, amax
+	mu = alpha / (alpha + beta) * amax
+	var = alpha * beta / ((alpha + beta) ** 2 * (alpha + beta + 1)) * amax ** 2
+	return mu, var, amax
 
 
 def mu_var_max_to_alpha_beta_max(mu, var, amax):
-    mu /= amax
-    var /= amax ** 2
-    alpha = (mu ** 2 * (1 - mu) - mu * var) / var
-    beta = (mu * (1 - mu) ** 2 - (1 - mu) * var) / var
-    return alpha, beta, amax
+	mu /= amax
+	var /= amax ** 2
+	alpha = (mu ** 2 * (1 - mu) - mu * var) / var
+	beta = (mu * (1 - mu) ** 2 - (1 - mu) * var) / var
+	return alpha, beta, amax
 
 
 class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulationModel):
@@ -36,6 +36,10 @@ class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulatio
 		self.b = b
 		self.var_names = var_names
 		self.hyper_var_names = hyper_var_names
+
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
 
 	
 	def __call__(self, data, params):
@@ -81,6 +85,10 @@ class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
 
 		if (parameterization in ("mu_sigma")) and hyper_var_names_are_mu_sigma:
 			self.converter = lambda mu,sigma,amax=1 : mu_var_max_to_alpha_beta_max(mu, sigma, amax)
+
+	@property
+	def limits(self):
+		return {var : [0, 1] for i,var in enumerate(self.var_names)}
 	
 	def __call__(self, data, params):
 		amax = params.get(self.hyper_var_names[2], 1)

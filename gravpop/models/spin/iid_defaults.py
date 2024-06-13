@@ -51,6 +51,106 @@ class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulatio
 		prob += (1-xi_spin)/4
 		return prob
 
+class GaussianIsotropicSpinOrientationsIIDExtended(SampledPopulationModel, SpinPopulationModel):
+	r"""
+	Mixture of gaussian and isotropic distribution over spin orientations.
+	Performs a monte carlo estimate of the population likelihood. 
+
+	Event Level Parameters:         :math:`z_1=cos(\theta_1), z_2=cos(\theta_2)`
+	Population Level Parameters:    :math:`\xi, \sigma` 
+
+	.. math::
+	
+		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
+	"""
+	def __init__(self, var_names=['cos_tilt_1', 'cos_tilt_2'], hyper_var_names=['xi_spin','sigma_spin_1', 'sigma_spin_2', 'z_min_1', 'z_min_2'], a=-1, b=1):
+		self.a = a
+		self.b = b
+		self.var_names = var_names
+		self.hyper_var_names = hyper_var_names
+
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+	def __call__(self, data, params):
+		xi_spin = params[self.hyper_var_names[0]]
+		sigma_spin_1 = params[self.hyper_var_names[1]]
+		sigma_spin_2 = params[self.hyper_var_names[2]]
+		z_min_1 = params[self.hyper_var_names[3]]
+		z_min_2 = params[self.hyper_var_names[4]]
+		prob  = truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin_1, high=self.b, low=z_min_1)
+		prob *= truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin_2, high=self.b, low=z_min_2)
+		prob *= xi_spin
+		prob += ((1-xi_spin)) * jnp.heaviside(data[self.var_names[0]] - z_min_1, 0.5) * jnp.heaviside(data[self.var_names[1]] - z_min_2, 0.5) / ((1-z_min_1)*(1-z_min_2))
+		return prob
+
+
+class GaussianIsotropicSpinOrientationsIIDFullExtended(SampledPopulationModel, SpinPopulationModel):
+	r"""
+	Mixture of gaussian and isotropic distribution over spin orientations.
+	Performs a monte carlo estimate of the population likelihood. 
+
+	Event Level Parameters:         :math:`z_1=cos(\theta_1), z_2=cos(\theta_2)`
+	Population Level Parameters:    :math:`\xi, \sigma` 
+
+	.. math::
+	
+		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
+	"""
+	def __init__(self, var_names=['cos_tilt_1', 'cos_tilt_2'], hyper_var_names=['xi_spin','sigma_spin', 'z_min'], a=-1, b=1):
+		self.a = a
+		self.b = b
+		self.var_names = var_names
+		self.hyper_var_names = hyper_var_names
+
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+	
+	def __call__(self, data, params):
+		xi_spin = params[self.hyper_var_names[0]]
+		sigma_spin = params[self.hyper_var_names[1]]
+		z_min = params[self.hyper_var_names[2]]
+		prob1  = xi_spin*(1/(1-z_min)) + (1-xi_spin)*truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
+		prob2  = xi_spin*(1/(1-z_min)) + (1-xi_spin)*truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
+		return prob1*prob2
+
+
+class GaussianIsotropicSpinOrientationsFloating(SampledPopulationModel, SpinPopulationModel):
+	r"""
+	Mixture of gaussian and isotropic distribution over spin orientations.
+	Performs a monte carlo estimate of the population likelihood. 
+
+	Event Level Parameters:         :math:`z_1=cos(\theta_1), z_2=cos(\theta_2)`
+	Population Level Parameters:    :math:`\xi, \sigma` 
+
+	.. math::
+	
+		P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
+	"""
+	def __init__(self, var_names=['cos_tilt_1', 'cos_tilt_2'], hyper_var_names=['xi_spin','mu_spin_1', 'sigma_spin_1', 'mu_spin_2', 'sigma_spin_2'], a=-1, b=1):
+		self.a = a
+		self.b = b
+		self.var_names = var_names
+		self.hyper_var_names = hyper_var_names
+
+	@property
+	def limits(self):
+		return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+	
+	def __call__(self, data, params):
+		xi_spin = params[self.hyper_var_names[0]]
+		mu_spin_1, mu_spin_2 = params[self.hyper_var_names[1]], params[self.hyper_var_names[3]]
+		sigma_spin_1, sigma_spin_2 = params[self.hyper_var_names[2]], params[self.hyper_var_names[4]]
+		prob  = truncnorm(data[self.var_names[0]], mu=mu_spin_1, sigma=sigma_spin_1, high=self.b, low=self.a)
+		prob *= truncnorm(data[self.var_names[1]], mu=mu_spin_2, sigma=sigma_spin_2, high=self.b, low=self.a)
+		prob *= xi_spin
+		prob += (1-xi_spin)/4
+		return prob
+
 
 
 class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):

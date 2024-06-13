@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from .custompriors import DiracDelta
 
 from typing import List, Dict, Any, Union, Tuple, Optional
 
@@ -20,8 +21,6 @@ from numpyro.infer import (
 )
 
 import pandas as pd
-
-import corner
 
 import numpyro
 import numpy as np
@@ -51,7 +50,10 @@ class Sampler:
     
     def model(self):
         for var,dist in self.priors.items():
-            self.x[var] = numpyro.sample(var, dist)
+            if type(dist) == DiracDelta:
+                self.x[var] = dist.value
+            else:
+                self.x[var] = numpyro.sample(var, dist)
 
         if len(self.constraints) != 0:
             for i in range(len(self.constraints)):
@@ -87,6 +89,7 @@ class Sampler:
             return self.samples
         
     def corner(self, color='k', truth=None, truth_color='b'):
+        import corner
         figure = corner.corner(self.samples.values,
                                 labels=[self.latex_symbols[col] for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],
@@ -99,6 +102,7 @@ class Sampler:
         return figure
         
     def corner_on_fig(self, fig, color='k', truth=None, truth_color='b'):
+        import corner
         figure = corner.corner(self.samples.values,
                                 labels=[self.latex_symbols[col] for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],

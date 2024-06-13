@@ -20,6 +20,9 @@ A_DEFAULT_GRID =  Grid([Grid1D(name='a_1', minimum=0, maximum=1, N=100, latex_na
                       Grid1D(name='a_2', minimum=0, maximum=1, N=100, latex_name=r"$a_2$")])
 
 
+latex_labels = {'chi_1' : r'$\chi_1$', 'chi_2' : r'$\chi_2$', 'a_1' : r'$a_1$', 'a_2' : r'$a_2$'}
+
+
 def has_spin_named_chi(posterior):
     if isinstance(posterior, pd.DataFrame):
         cols = list(posterior.columns)
@@ -78,8 +81,17 @@ class SpinMagintudePlot:
         if self.result is None:
             self.compute()
 
+    def spin_2D_plot(self, quantiles=[0.9, 0.5], dpi=200):
+        from truncnormkde import BoundedKDEPlot
+        quantiles.sort(reverse=True)
+        hyper_posterior_samples = pd.DataFrame(self.hyper_posterior_samples)
+        oversample = 10000 // len(hyper_posterior_samples)
+        dfsamps = self.model.sample(hyper_posterior_samples, oversample=oversample)
 
-    def spin_2D_plot(self, quantiles=[0.05, 0.5, 0.95], dpi=200):
+        return BoundedKDEPlot(dfsamps, latex_labels=latex_labels).plot(quantiles=quantiles, dpi=dpi);
+
+
+    def spin_2D_plot_old(self, quantiles=[0.05, 0.5, 0.95], dpi=200):
         self.compute_if_not_computed()
         spin_all = self.result
         spin_1s = self.spin_grid.data[self.spin_1_name]

@@ -155,3 +155,12 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         X_locations, X_scales, mu, sigma = self.get_data(data, params);
         loglikes = loglikelihood_kernel1d(X_locations, X_scales, mu, sigma, self.a, self.b)
         return jnp.exp(loglikes)
+
+    def sample(self, df_hyper_samples, oversample=1):
+        return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
+
+
+
+
+
+

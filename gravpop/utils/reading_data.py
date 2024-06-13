@@ -6,6 +6,8 @@ def load_hdf5_to_jax_dict(filename, ignore_events=[]):
     with h5py.File(filename, 'r') as f:
         for event_name, event_group in f.items():
             event_data = {}
+            if event_name in ignore_events:
+                continue
             for dataset_name, dataset in event_group.items():
                 if isinstance(dataset, h5py.Dataset):
                     event_data[dataset_name] = jnp.array(dataset)
@@ -36,16 +38,18 @@ def load_hdf5_attributes(filename):
 
 def stack_nested_jax_arrays(data):
     stacked_data = {}
+    eventnames = []
     for event_name, event_data in data.items():
+        eventnames.append(event_name)
         for var_name, var_data in event_data.items():
             if isinstance(var_data, dict):
                 if var_name not in stacked_data:
-                    stacked_data[var_name] = stack_nested_jax_arrays({event_name: var_data})
+                    stacked_data[var_name] = stack_nested_jax_arrays({event_name: var_data})[0]
                 else:
-                    stacked_data[var_name].update(stack_nested_jax_arrays({event_name: var_data}))
+                    stacked_data[var_name].update(stack_nested_jax_arrays({event_name: var_data})[0])
             else:
                 if var_name not in stacked_data:
                     stacked_data[var_name] = jnp.expand_dims(var_data, axis=0)
                 else:
                     stacked_data[var_name] = jnp.vstack((stacked_data[var_name], jnp.expand_dims(var_data, axis=0)))
-    return stacked_data
+    return stacked_data, eventnames

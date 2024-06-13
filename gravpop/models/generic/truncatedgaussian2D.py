@@ -4,6 +4,7 @@
 
 from ..utils import *
 from .abstract import *
+from ..sample import *
 
 import jax
 import jax.numpy as jnp
@@ -197,6 +198,9 @@ class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
                                    sigma_11=X_scales_1, sigma_12=X_scales_2, 
                                    sigma_21=sigma_1, sigma_22=sigma_2,
                                    rho_1=rho_kernel, rho_2=rho, a=self.a, b=self.b)
+
+    def sample(self, df_hyper_samples, oversample=1):
+        return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
 
 
 

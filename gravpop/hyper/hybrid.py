@@ -15,10 +15,10 @@ from functools import partial
 
 def fix_kernels(mus, sigmas, a, b, lower_lim=-4, upper_lim=4, n=10):
     alphas, betas = (mus - a)/sigmas, (mus - b)/sigmas
-    too_far_left = (alphas < lower_lim) & (betas > 0)
+    too_far_left = (alphas < lower_lim) & (betas < 0)
     too_far_right = (betas > upper_lim) & (alphas > 0)
     sigmas_fixed = jnp.where(too_far_left | too_far_right, sigmas/jnp.sqrt(n), sigmas) 
-    mus_fixed = jnp.where(too_far_left, a - (a-mus)/n, jnp.where(too_far_right, b + (b-mus)/n, mus))
+    mus_fixed = jnp.where(too_far_left, a - (a-mus)/n, jnp.where(too_far_right, b + (mus-b)/n, mus))
     return mus_fixed, sigmas_fixed
 
 @dataclass
@@ -30,6 +30,7 @@ class HybridPopulationLikelihood:
     event_expectation: Optional[AbstractExpectation] = field(default=HybridEventExpectation())
     selection_expectation: Optional[AbstractExpectation] = field(default=HybridSelectionExpectation())
     enforce_convergence : Optional[bool] = False
+    event_names : Optional[List[str]] = None
     
     def __post_init__(self):
         if not ('weights' in self.event_data):
@@ -65,6 +66,9 @@ class HybridPopulationLikelihood:
         for model in self.analytic_models:
             self.analytic_limits.update(model.limits)
 
+        if self.event_names is None:
+            self.event_names = []
+
         for var in self.analytic_limits.keys():
             if self.selection_data is not None:
                 sel = self.selection_data.selection_data
@@ -74,6 +78,11 @@ class HybridPopulationLikelihood:
             eventd = self.event_data
             mus, sigmas = fix_kernels(eventd[var + '_mu_kernel'], eventd[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
             self.event_data[var + '_mu_kernel'], self.event_data[var + '_sigma_kernel'] = mus, sigmas
+
+        print("Initialized Likelihood with variables:")
+        print(self.event_data.keys())
+        print("With events:")
+        print(self.event_names)
 
     @property
     def models(self):
@@ -194,8 +203,21 @@ class HybridPopulationLikelihood:
 
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
-                       SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[]):
-        event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
+                       SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[], 
+                       downsample=None):
+        event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
+
+        if (len(sampled_models) != 0) and (downsample is not None):
+            varname = sampled_models[0].var_names[0]
+            print(varname, len(event_data[varname].shape))
+            E,K,N = event_data[varname].shape
+            inds = np.random.randint(0,N, size=downsample)
+            for col in event_data.keys():
+                the_var_to_change = event_data[col]
+                its_an_array = hasattr(the_var_to_change, 'shape')
+                if its_an_array:
+                    if len(the_var_to_change.shape) == 3:
+                        event_data[col] = event_data[col][:,:,inds]
 
         redshift_model = [model for model in sampled_models if isinstance(model, Redshift)]
         redshift_model += [model for model in analytic_models if isinstance(model, Redshift)]
@@ -213,11 +235,23 @@ class HybridPopulationLikelihood:
             if "selection" in selection_attributes.keys():
                 selection_attributes = selection_attributes["selection"]
 
+            if (len(sampled_models) != 0) and (downsample is not None):
+                varname = sampled_models[0].var_names[0]
+                K,N = selection_data[varname].shape
+                inds = np.random.randint(0,N, size=downsample)
+                for col in selection_data.keys():
+                    the_var_to_change = selection_data[col]
+                    its_an_array = hasattr(the_var_to_change, 'shape')
+                    if its_an_array:
+                        if len(selection_data[col].shape) == 2:
+                            selection_data[col] = selection_data[col][:,inds]
+
             selection = SelectionClass(selection_data, 
                                        selection_attributes['analysis_time'],
                                        selection_attributes['total_generated'],
                                        redshift_model)
         else:
             selection = None
+
         return cls(sampled_models=sampled_models, analytic_models=analytic_models, event_data=event_data, 
-                  selection_data=selection, enforce_convergence=enforce_convergence)
+                  selection_data=selection, enforce_convergence=enforce_convergence, event_names=event_names)

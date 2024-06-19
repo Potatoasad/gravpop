@@ -379,7 +379,7 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
 
     @property
     def limits(self):
-        return {var : [self.a[i], self.b[i]] for i,var in enumerate(self.var_names)}
+        return self.models[0].limits
 
     def __call__(self, data, params):
         result  =      params[self.mixture_hyper_var_name]  * self.models[0](data, params)

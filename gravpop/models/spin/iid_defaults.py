@@ -113,8 +113,8 @@ class GaussianIsotropicSpinOrientationsIIDFullExtended(SampledPopulationModel, S
 		xi_spin = params[self.hyper_var_names[0]]
 		sigma_spin = params[self.hyper_var_names[1]]
 		z_min = params[self.hyper_var_names[2]]
-		prob1  = xi_spin*(1/(1-z_min)) + (1-xi_spin)*truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
-		prob2  = xi_spin*(1/(1-z_min)) + (1-xi_spin)*truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
+		prob1  = xi_spin*(1/(1-z_min))*jnp.where(data[self.var_names[0]] < z_min, 0, 1) + (1-xi_spin)*truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
+		prob2  = xi_spin*(1/(1-z_min))*jnp.where(data[self.var_names[1]] < z_min, 0, 1) + (1-xi_spin)*truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
 		return prob1*prob2
 
 

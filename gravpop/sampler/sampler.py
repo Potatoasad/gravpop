@@ -57,7 +57,7 @@ class Sampler:
 
         if len(self.constraints) != 0:
             for i in range(len(self.constraints)):
-                numpyro.factor(str(i), self.constraints[i].logpdf(self.x))
+                numpyro.factor('user_defined_constraint_' + str(i), self.constraints[i].logpdf(self.x))
 
         if self.just_prior:
             return None

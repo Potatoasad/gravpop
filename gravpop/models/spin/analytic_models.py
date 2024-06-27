@@ -95,6 +95,8 @@ class GaussianIsotropicSpinOrientationsFloatingAnalytic(AnalyticPopulationModel,
 
 class IIDTruncatedGaussian1DAnalytic(AnalyticPopulationModel):
 	def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
+		self.a = a
+		self.b = b
 		self.var_names = var_names
 		self.hyper_var_names = hyper_var_names
 		kwargs = {'a' : a, 'b' : b, 'hyper_var_names' : hyper_var_names}

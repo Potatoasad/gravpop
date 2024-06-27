@@ -65,3 +65,12 @@ class FlatInMeanVar:
         return self.log_prior_mean_var_trunc_norm(mu, sigma)
 
 
+@dataclass
+class VarianceToStd:
+    hyper_var_names : List[str] = field(default_factory=lambda : ['sigma_chi'])
+    
+    def logpdf(self, x):
+        sigma = x[self.hyper_var_names[0]]
+        return -jnp.log(sigma)
+
+

@@ -53,7 +53,7 @@ class FlatInMeanVar:
         return E, V, Z
 
     def log_prior_mean_var_trunc_norm(self, mu, sigma):
-        E, V, Z = mean_var_Z_trunc_norm(mu, sigma)
+        E, V, Z = self.mean_var_Z_trunc_norm(mu, sigma)
         log_prob = 5*jnp.log(Z)
         log_prob += -0.5*((jnp.log(V)-jnp.log(0.015))/(1.5))**2
         log_prob +=  -0.1*(0.5*((V-0.04)/(0.01))**2 + 0.5*((E-0.5)/(0.3))**2)

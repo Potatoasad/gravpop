@@ -1,3 +1,5 @@
+from .abstract import *
+
 class SampledFromAnalytic(SampledPopulationModel):
     def __init__(self, analytic_model):
         self.analytic_model = analytic_model

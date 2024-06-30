@@ -21,6 +21,7 @@ class PopulationLikelihood:
     analysis_time: float = 1 # Analysis duration, default to one year
     total_generated: Optional[int] = None
     enforce_convergence: bool = False
+    event_names : Optional[List[str]] = None
     
     def __post_init__(self):
         #print("redoing prior")
@@ -126,7 +127,7 @@ class PopulationLikelihood:
         event_file_ext = event_data_filename.split('.')[-1]
         if event_file_ext in ('hdf5', 'h5'):
             # Extract the entire hdf5 as a nested dictionary of jax arrays
-            event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
+            event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
         elif event_file_ext == 'pkl':
             # Extract a posteriors.pkl file usually an intermediate data product of gwpopulation_pipe
             # Must be a pickle of a list of pandas dataframes
@@ -138,6 +139,7 @@ class PopulationLikelihood:
             event_data['mass_1_source'] = event_data['mass_1']
             event_data['chi_1'] = event_data['a_1']
             event_data['chi_2'] = event_data['a_2']
+            event_names = list(range(len(event_data)))
         print(list(event_data.keys()))
         print("(N_events, N_samples_per_event) = ", event_data['prior'].shape)
         selection_data = load_hdf5_to_jax_dict(selection_data_filename)
@@ -161,4 +163,4 @@ class PopulationLikelihood:
                                    selection_attributes['analysis_time'],
                                    selection_attributes['total_generated'],
                                    redshift_model)
-        return cls(models, event_data, selection, enforce_convergence=enforce_convergence)
+        return cls(models, event_data, selection, enforce_convergence=enforce_convergence, event_names=event_names)

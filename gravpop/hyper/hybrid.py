@@ -154,9 +154,16 @@ class HybridPopulationLikelihood:
         return jnp.where(jnp.min(N_eff) > self.N_events, loglikes, -jnp.nan_to_num(jnp.inf) * jnp.ones_like(loglikes))
 
     def log_bayes_factors_event(self, params):
-        sampled_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.sampled_models) - self.log(self.event_data["prior"])
+        if len(self.sampled_models) != 0:
+            sampled_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.sampled_models) - self.log(self.event_data["prior"])
+        else:
+            sampled_logweights_event = None
+
         ## Event analytic:
-        analytic_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.analytic_models)
+        if len(self.analytic_models) != 0:
+            analytic_logweights_event = sum(self.log(model(self.event_data, params)) for model in self.analytic_models)
+        else:
+            analytic_logweights_event = None
         loglikes_event = self.event_expectation.log_bayes_factors(sampled_logweights=sampled_logweights_event, 
                                                                   analytic_logweights=analytic_logweights_event, 
                                                                   weights=self.event_data["weights"])
@@ -173,8 +180,16 @@ class HybridPopulationLikelihood:
 
     def log_bayes_factors_selection(self, params):
         data = self.selection_data.selection_data
-        sampled_logweights_selection = sum(self.log(model(data, params)) for model in self.sampled_models) - self.log(data["prior"])
-        analytic_logweights_selection = sum(self.log(model(data, params)) for model in self.analytic_models)
+        if len(self.sampled_models) != 0:
+            sampled_logweights_selection = sum(self.log(model(data, params)) for model in self.sampled_models) - self.log(data["prior"])
+        else:
+            sampled_logweights_selection = None
+
+        if len(self.analytic_models) != 0:
+            analytic_logweights_selection = sum(self.log(model(data, params)) for model in self.analytic_models)
+        else:
+            analytic_logweights_selection = None
+
         loglikes_selection = self.selection_expectation.log_bayes_factors(sampled_logweights=sampled_logweights_selection, 
                                                                           analytic_logweights=analytic_logweights_selection, 
                                                                           weights=data["weights"])

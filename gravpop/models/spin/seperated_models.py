@@ -401,3 +401,46 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
         return pd.DataFrame(d)
 
 
+class TruncatedGaussian1DMixtureZeroAndFloatingIID(AnalyticPopulationModel, SpinPopulationModel):
+    def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['sigma_chi_at_0','mu_chi', 'sigma_chi', 'eta_spin']):
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        self.a = a; self.b=b;
+        kwargs = {'a' : a, 'b' : b}
+        comp1_var_names = [var_names[0]]
+        comp2_var_names = [var_names[1]]
+
+        comp1_hyper_var_names = ['mu_zero_spin_1d_fixed', self.hyper_var_names[0], 'mu_zero_spin_1d_fixed', self.hyper_var_names[0]]
+        comp2_hyper_var_names = self.hyper_var_names[1:3]*2
+        self.mixture_hyper_var_name = self.hyper_var_names[-1]
+
+        self.models = [TruncatedGaussian1DIndependentAnalytic(var_names=self.var_names, hyper_var_names=comp1_hyper_var_names, a=a, b=b),
+                       TruncatedGaussian1DIndependentAnalytic(var_names=self.var_names, hyper_var_names=comp2_hyper_var_names, a=a, b=b)]
+
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+    def __call__(self, data, params):
+        params['mu_zero_spin_1d_fixed'] = 0.0
+        result  =      params[self.mixture_hyper_var_name]  * self.models[0](data, params)
+        result += (1 - params[self.mixture_hyper_var_name]) * self.models[1](data, params)
+        return result
+
+    def evaluate(self, data, params):
+        params['mu_zero_spin_1d_fixed'] = 0.0
+        result  =      params[self.mixture_hyper_var_name]  * self.models[0].evaluate(data, params)
+        result += (1 - params[self.mixture_hyper_var_name]) * self.models[1].evaluate(data, params)
+        return result
+
+    def sample(self, df_hyper_samples_in, oversample=1, **kwargs):
+        kwargs['oversample'] = oversample
+        df_hyper_samples = df_hyper_samples_in.copy()
+        df_hyper_samples['mu_zero_spin_1d_fixed'] = 0
+        series_1 = self.models[0].sample(df_hyper_samples, **kwargs)
+        series_2 = self.models[1].sample(df_hyper_samples, **kwargs)
+        N = len(df_hyper_samples)
+        sampled_mixture = np.hstack([(df_hyper_samples[self.mixture_hyper_var_name] <= np.random.rand(N)) for _ in range(oversample)])
+        d = {col : ((sampled_mixture * series_1[col]) + ((1 - sampled_mixture) * series_2[col])) for col in series_1.columns}
+        return pd.DataFrame(d)
+

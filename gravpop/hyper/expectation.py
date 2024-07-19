@@ -107,9 +107,9 @@ class HybridExpectation(SampledExpectation, AnalyticExpectation): # E x ... x K 
 		return N_components
 
 	def log_mu(self, sampled_logweights=None, analytic_logweights=None, N_samples_per_component=None):
-		N_samples_per_component = self.num_samples(sampled_logweights, N_samples=N_samples_per_component)
 		log_bayes_factor_per_component = 0.0
 		if sampled_logweights is not None:
+			N_samples_per_component = self.num_samples(sampled_logweights, N_samples=N_samples_per_component)
 			#print(SampledExpectation.log_mu(self, sampled_logweights, N_samples=N_samples_per_component).shape)
 			log_bayes_factor_per_component += SampledExpectation.log_mu(self, sampled_logweights, N_samples=N_samples_per_component)
 		if analytic_logweights is not None:

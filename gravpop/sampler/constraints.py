@@ -64,6 +64,31 @@ class FlatInMeanVar:
         sigma = x[self.hyper_var_names[1]]
         return self.log_prior_mean_var_trunc_norm(mu, sigma)
 
+@dataclass
+class FlatInMeanStd:
+    hyper_var_names : List[str] = field(default_factory=lambda : ['mu_chi', 'sigma_chi'])
+    
+    def mean_var_Z_trunc_norm(self, mu, sigma):
+        alpha,  beta = (-mu/sigma), ((1-mu)/sigma)
+        Z = jax.scipy.stats.norm.cdf(beta) -  jax.scipy.stats.norm.cdf(alpha)
+        kappa = (jax.scipy.stats.norm.pdf(beta) - jax.scipy.stats.norm.pdf(alpha)) / Z
+        nu = (beta*jax.scipy.stats.norm.pdf(beta) - alpha*jax.scipy.stats.norm.pdf(alpha)) / Z
+        E = mu * (1 + kappa/alpha)
+        V = (sigma**2) * (1 - nu - kappa**2)
+        return E, V, Z
+
+    def log_prior_mean_std_trunc_norm(self, mu, sigma):
+        E, V, Z = self.mean_var_Z_trunc_norm(mu, sigma)
+        log_prob = 5*jnp.log(Z)
+        log_prob += -0.5*((jnp.log(V)-jnp.log(0.015))/(1.5))**2
+        log_prob +=  -0.1*(0.5*((V-0.04)/(0.01))**2 + 0.5*((E-0.5)/(0.3))**2)
+        return log_prob - 0.5*jnp.log(V)
+
+    def logpdf(self, x):
+        mu = x[self.hyper_var_names[0]]
+        sigma = x[self.hyper_var_names[1]]
+        return self.log_prior_mean_std_trunc_norm(mu, sigma)
+
 
 @dataclass
 class VarianceToStd:

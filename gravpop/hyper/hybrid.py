@@ -219,7 +219,7 @@ class HybridPopulationLikelihood:
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
                        SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[], 
-                       downsample=None, inflate_selection_spins=False, downsample_selection=False):
+                       downsample=None, inflate_selection_spins=False, inflate_selection_spins_factor=4, downsample_selection=False):
         event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
 
         if (len(sampled_models) != 0) and (downsample is not None):
@@ -263,8 +263,8 @@ class HybridPopulationLikelihood:
 
 
             if inflate_selection_spins:
-                selection_data['chi_1_sigma_kernel'] *= 4
-                selection_data['chi_2_sigma_kernel'] *= 4
+                selection_data['chi_1_sigma_kernel'] *= inflate_selection_spins_factor
+                selection_data['chi_2_sigma_kernel'] *= inflate_selection_spins_factor
 
             selection = SelectionClass(selection_data, 
                                        selection_attributes['analysis_time'],

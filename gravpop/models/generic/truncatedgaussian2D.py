@@ -191,8 +191,8 @@ class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
     def __call__(self, data, params):
         X_locations_1, X_scales_1, mu_1, sigma_1 = self.get_data(data, params, component=1);
         X_locations_2, X_scales_2, mu_2, sigma_2 = self.get_data(data, params, component=2);
-        rho = params.get(self.rho_name, 0)
-        rho_kernel = data.get(self.var_name_1 + "_rho_kernel", jnp.zeros_like(data[self.var_name_1 + "_mu_kernel"]))
+        rho = params.get(self.rho_name, 1e-6)
+        rho_kernel = data.get(self.var_name_1 + "_rho_kernel", 1e-6 * jnp.ones_like(data[self.var_name_1 + "_mu_kernel"]))
         return compute_likelihood(mu_11=X_locations_1, mu_12=X_locations_2, 
                                    mu_21=mu_1, mu_22=mu_2,
                                    sigma_11=X_scales_1, sigma_12=X_scales_2, 

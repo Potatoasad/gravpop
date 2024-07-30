@@ -31,11 +31,19 @@ class HybridPopulationLikelihood:
     selection_expectation: Optional[AbstractExpectation] = field(default=HybridSelectionExpectation())
     enforce_convergence : Optional[bool] = False
     event_names : Optional[List[str]] = None
+    selection_sampled_models: Optional[str] = None
+    selection_analytic_models: Optional[str] = None
     
     def __post_init__(self):
         if not ('weights' in self.event_data):
             raise ValueError("Expected 'weights' key in the event_data dictionary")
         self.N_events = self.event_data['weights'].shape[0]
+
+        if self.selection_sampled_models is None:
+            self.selection_sampled_models = self.sampled_models
+
+        if self.selection_analytic_models is None:
+            self.selection_analytic_models = self.analytic_models
 
         if "prior" not in self.event_data:
             keyvalues = list(self.event_data.items())
@@ -181,12 +189,12 @@ class HybridPopulationLikelihood:
     def log_bayes_factors_selection(self, params):
         data = self.selection_data.selection_data
         if len(self.sampled_models) != 0:
-            sampled_logweights_selection = sum(self.log(model(data, params)) for model in self.sampled_models) - self.log(data["prior"])
+            sampled_logweights_selection = sum(self.log(model(data, params)) for model in self.selection_sampled_models) - self.log(data["prior"])
         else:
             sampled_logweights_selection = None
 
         if len(self.analytic_models) != 0:
-            analytic_logweights_selection = sum(self.log(model(data, params)) for model in self.analytic_models)
+            analytic_logweights_selection = sum(self.log(model(data, params)) for model in self.selection_analytic_models)
         else:
             analytic_logweights_selection = None
 
@@ -219,8 +227,10 @@ class HybridPopulationLikelihood:
     @classmethod
     def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
                        SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[], 
-                       downsample=None, inflate_selection_spins=False, inflate_selection_spins_factor=4, downsample_selection=False):
+                       downsample=None, inflate_selection_spins=False, inflate_selection_spins_factor=4, downsample_selection=False,
+                       selection_sampled_models=None, selection_analytic_models=None):
         event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
+        print(event_data.keys())
 
         if (len(sampled_models) != 0) and (downsample is not None):
             varname = sampled_models[0].var_names[0]
@@ -273,5 +283,6 @@ class HybridPopulationLikelihood:
         else:
             selection = None
 
-        return cls(sampled_models=sampled_models, analytic_models=analytic_models, event_data=event_data, 
+        return cls(sampled_models=sampled_models, analytic_models=analytic_models, selection_sampled_models=selection_sampled_models, 
+                  selection_analytic_models=selection_analytic_models, event_data=event_data, 
                   selection_data=selection, enforce_convergence=enforce_convergence, event_names=event_names)

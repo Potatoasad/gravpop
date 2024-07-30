@@ -368,11 +368,11 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic2D(AnalyticPopulationModel, Sp
         prob *= xi_spin
         prob += (1-xi_spin)/4
         return prob
-    
+        
     def __call__(self, data, params):
         xi_spin = params[self.hyper_var_names[0]]
         sigma_spin = params[self.hyper_var_names[1]]
-        new_params = {**params, 'mu_spin':1, 'rho_zero_fixed':0}
+        new_params = {**params, 'mu_spin':1, 'rho_zero_fixed':1e-6}
         prob  = self.model(data, new_params)
         prob *= xi_spin
         prob += (1-xi_spin)/4

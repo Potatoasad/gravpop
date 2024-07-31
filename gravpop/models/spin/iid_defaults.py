@@ -78,6 +78,7 @@ class GaussianIsotropicSpinOrientationsIIDWithMinimum(SampledPopulationModel, Sp
 	def __call__(self, data, params):
 		xi_spin = params[self.hyper_var_names[0]]
 		sigma_spin = params[self.hyper_var_names[1]]
+		z_min = params[self.hyper_var_names[2]]
 		prob  = truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
 		prob *= truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
 		prob *= xi_spin

@@ -76,7 +76,7 @@ class Sampler:
         # Run NUTS.
         kernel = NUTS(self.model, target_accept_prob=self.target_accept_prob, max_tree_depth=self.max_tree_depth)
         num_samples = self.num_samples
-        mcmc = MCMC(kernel, num_warmup=self.num_warmup, num_samples=num_samples)
+        mcmc = MCMC(kernel, num_warmup=self.num_warmup, num_samples=num_samples, jit_model_args=True)
         mcmc.run(rng_key_)
         if self.summary:
             mcmc.print_summary()

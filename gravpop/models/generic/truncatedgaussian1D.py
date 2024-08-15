@@ -160,6 +160,63 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
         return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
 
 
+class TruncatedGaussian1DAnalyticVariedLimits(AnalyticPopulationModel):
+    r"""
+    Truncated Gaussian Distribution. Evaluates an analytical expression for the population likelihood of a truncated
+    gaussian distribution evaluated over data distributed as a truncated gaussian as well. Useful when our data is represented as a truncated gaussian mixture. 
+    This class evaluated over the components of such a mixture, would allow us to evaluate the population likelihood of arbitrary data distributions represented using truncated gaussian mixtures. 
+
+    Event Level Parameters:         :math:`x \sim \mathcal{N}_{[a,b]}(x_0, \Delta x)` 
+    Population Level Parameters:    :math:`\mu, \sigma` 
+
+    .. math::
+    
+        P(x | \mu, \sigma) = \mathcal{N}_{[a,b]}))(x | \mu, \sigma) \textrm{ where } x \sim \mathcal{N}_{[a,b]}(x_0, \Delta x)
+    """
+    def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma', 'x_min', 'x_max']):
+        self.a = a
+        self.b = b
+        self.var_name = var_names[0]
+        self.mu_name = hyper_var_names[0]
+        self.sigma_name = hyper_var_names[1]
+        self.x_min = hyper_var_names[2];
+        self.x_max = hyper_var_names[3];
+
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+        
+    def get_data(self, data, params):
+        X_locations = data[self.var_name + '_mu_kernel'];
+        X_scales    = data[self.var_name + '_sigma_kernel'];
+        mu          = params[self.mu_name]
+        sigma       = params[self.sigma_name]
+        x_min       = params[self.x_min]
+        x_max       = params[self.x_max]
+        return X_locations, X_scales, mu, sigma, x_min, x_max
+
+    def evaluate(self, data, params):
+        """
+        Evaluates the value of the *integrand* and not the integral
+        """
+        Xs          = data[self.var_name];
+        mu          = params[self.mu_name];
+        sigma       = params[self.sigma_name];
+        x_min       = params[self.x_min];
+        x_max       = params[self.x_max];
+        #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
+        prob = truncnorm(Xs, mu, sigma, low=x_min, high=x_max)
+        return prob
+        
+    def __call__(self, data, params):
+        X_locations, X_scales, mu, sigma, x_min, x_max = self.get_data(data, params);
+        loglikes = loglikelihood_kernel1d(X_locations, X_scales, mu, sigma, x_min, x_max)
+        return jnp.exp(loglikes)
+
+    def sample(self, df_hyper_samples, oversample=1):
+        return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
+
+
 
 
 

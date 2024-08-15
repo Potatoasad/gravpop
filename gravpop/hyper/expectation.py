@@ -25,7 +25,8 @@ class AbstractExpectation:
 
 class SampledExpectation(AbstractExpectation): # takes in an array with shape E x ... x N
 	def log_mu(self, logweights, N_samples=None):
-		N_samples = self.num_samples(logweights, N_samples)
+		if N_samples is None:
+			N_samples = self.num_samples(logweights, N_samples)
 		return jax.scipy.special.logsumexp(logweights, axis=-1) - jnp.log(N_samples)  # E x ...
 
 	def mu(self, logweights, N_samples):

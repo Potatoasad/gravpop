@@ -87,10 +87,10 @@ class HybridPopulationLikelihood:
             mus, sigmas = fix_kernels(eventd[var + '_mu_kernel'], eventd[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
             self.event_data[var + '_mu_kernel'], self.event_data[var + '_sigma_kernel'] = mus, sigmas
 
-        print("Initialized Likelihood with variables:")
-        print(self.event_data.keys())
-        print("With events:")
-        print(self.event_names)
+        #print("Initialized Likelihood with variables:")
+        #print(self.event_data.keys())
+        #print("With events:")
+        #print(self.event_names)
 
     @property
     def models(self):
@@ -230,11 +230,11 @@ class HybridPopulationLikelihood:
                        downsample=None, inflate_selection_spins=False, inflate_selection_spins_factor=4, downsample_selection=False,
                        selection_sampled_models=None, selection_analytic_models=None):
         event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
-        print(event_data.keys())
+        #print(event_data.keys())
 
         if (len(sampled_models) != 0) and (downsample is not None):
             varname = sampled_models[0].var_names[0]
-            print(varname, len(event_data[varname].shape))
+            #print(varname, len(event_data[varname].shape))
             E,K,N = event_data[varname].shape
             inds = np.random.randint(0,N, size=downsample)
             for col in event_data.keys():

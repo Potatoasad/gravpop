@@ -203,9 +203,64 @@ class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
         return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
 
 
+class TruncatedGaussian2DAnalyticLimits(AnalyticPopulationModel):
+    def __init__(self, a=[0.0, 0.0], b=[1.0, 1.0], var_names=['chi_1', 'chi_2'], 
+                 hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2', 'rho_chi',
+                                  'chi_1_min', 'chi_1_max', 'chi_2_min', 'chi_2_max']):
+        self.a = a
+        self.b = b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        self.var_name_1 = var_names[0]
+        self.mu_name_1 = hyper_var_names[0]
+        self.sigma_name_1 = hyper_var_names[1]
+        self.var_name_2 = var_names[1]
+        self.mu_name_2 = hyper_var_names[2]
+        self.sigma_name_2 = hyper_var_names[3]
+        self.rho_name = hyper_var_names[4]
+        self.a_name_0 = hyper_var_names[5]
+        self.a_name_1 = hyper_var_names[6]
+        self.b_name_0 = hyper_var_names[7]
+        self.b_name_1 = hyper_var_names[8]
 
+    @property
+    def limits(self):
+        return {var : [self.a[i], self.b[i]] for i,var in enumerate(self.var_names)}
+        
+    def get_data(self, data, params, component):
+        var_name = self.var_name_1 if (component == 1) else self.var_name_2
+        mu_name = self.mu_name_1 if (component == 1) else self.mu_name_2
+        sigma_name = self.sigma_name_1 if (component == 1) else self.sigma_name_2
+        X_locations = data[var_name + '_mu_kernel'];
+        X_scales    = data[var_name + '_sigma_kernel'];
+        mu          = params[mu_name]
+        sigma       = params[sigma_name]
+        return X_locations, X_scales, mu, sigma
+    
+    def evaluate(self, data, params):
+        x_1, x_2 = data[self.var_name_1], data[self.var_name_2]
+        mu_1, mu_2 = params[self.mu_name_1], params[self.mu_name_2]
+        sigma_1, sigma_2 = params[self.sigma_name_1], params[self.sigma_name_2]
+        rho = params.get(self.rho_name, 0)
+        a = [params.get(self.a_name_0, self.a[0]), params.get(self.a_name_1, self.a[1])];
+        b = [params.get(self.b_name_0, self.b[0]), params.get(self.b_name_1, self.b[1])];
+        return compute_truncated_normal_pdf_on_samples(x_1, x_2, mu_1, mu_2, sigma_1, sigma_2, rho, a=a, b=b)
+    
+    def __call__(self, data, params):
+        X_locations_1, X_scales_1, mu_1, sigma_1 = self.get_data(data, params, component=1);
+        X_locations_2, X_scales_2, mu_2, sigma_2 = self.get_data(data, params, component=2);
+        rho = params.get(self.rho_name, 1e-6)
+        rho_kernel = data.get(self.var_name_1 + "_rho_kernel", 1e-6 * jnp.ones_like(data[self.var_name_1 + "_mu_kernel"]))
+        a = [params.get(self.a_name_0, self.a[0]), params.get(self.a_name_1, self.a[1])];
+        b = [params.get(self.b_name_0, self.b[0]), params.get(self.b_name_1, self.b[1])];
+        return compute_likelihood(mu_11=X_locations_1, mu_12=X_locations_2, 
+                                   mu_21=mu_1, mu_22=mu_2,
+                                   sigma_11=X_scales_1, sigma_12=X_scales_2, 
+                                   sigma_21=sigma_1, sigma_22=sigma_2,
+                                   rho_1=rho_kernel, rho_2=rho, a=a, b=b)
 
-
+    def sample(self, df_hyper_samples, oversample=1):
+        return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
 
 
 

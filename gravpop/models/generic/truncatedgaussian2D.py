@@ -219,8 +219,8 @@ class TruncatedGaussian2DAnalyticLimits(AnalyticPopulationModel):
         self.sigma_name_2 = hyper_var_names[3]
         self.rho_name = hyper_var_names[4]
         self.a_name_0 = hyper_var_names[5]
-        self.a_name_1 = hyper_var_names[6]
-        self.b_name_0 = hyper_var_names[7]
+        self.b_name_0 = hyper_var_names[6]
+        self.a_name_1 = hyper_var_names[7]
         self.b_name_1 = hyper_var_names[8]
 
     @property

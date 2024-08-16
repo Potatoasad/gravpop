@@ -397,11 +397,11 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic2DWithMinimum(AnalyticPopulati
         self.b = b
         self.var_names = var_names
         self.hyper_var_names = hyper_var_names
-        self.model = TruncatedGaussian2DAnalytic(a=[a,a], b=[b,b], 
+        self.model = TruncatedGaussian2DAnalyticLimits(a=[a,a], b=[b,b], 
                                                 var_names=var_names, 
                                                 hyper_var_names=['mu_spin', hyper_var_names[1], 
                                                                  'mu_spin', hyper_var_names[1], 'rho_zero_fixed',
-                                                                 'z_min', 'param_that_doesnt_exist', 'z_min', 'param_that_doesnt_exist'])
+                                                                 'z_min', 'z_max_fixed_to_b', 'z_min', 'z_max_fixed_to_b'])
 
     @property
     def limits(self):
@@ -421,13 +421,55 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic2DWithMinimum(AnalyticPopulati
         xi_spin = params[self.hyper_var_names[0]]
         sigma_spin = params[self.hyper_var_names[1]]
         z_min = params[self.hyper_var_names[2]]
-        new_params = {**params, 'mu_spin':1, 'rho_zero_fixed':1e-6}
+        new_params = {**params, 'mu_spin':1, 'rho_zero_fixed':1e-6,  'z_max_fixed_to_b' : self.b}
         prob  = self.model(data, new_params)
         prob *= xi_spin
         prob += (1-xi_spin)/((1-z_min)**2)
         return prob
 
+class GaussianIsotropicSpinOrientationsIIDAnalytic1DWithMinimum(AnalyticPopulationModel, SpinPopulationModel):
+    r"""
+    Mixture of gaussian and isotropic distribution over spin orientations.
+    Performs a monte carlo estimate of the population likelihood. 
 
+    Event Level Parameters:         :math:`z_1=cos(\theta_1), z_2=cos(\theta_2)`
+    Population Level Parameters:    :math:`\xi, \sigma` 
+
+    .. math::
+    
+        P(z_1, z_2| \xi, \sigma) = \frac{1-\xi}{4} + \xi \left(  \mathcal{N}_{[-1,1]}(z_1 | \xi, \sigma) \mathcal{N}_{[-1,1]}(z_2 | \xi, \sigma) \right) 
+    """
+    def __init__(self, var_names=['cos_tilt_1', 'cos_tilt_2'], hyper_var_names=['xi_spin','sigma_spin', 'z_min'], a=-1, b=1):
+        self.a = a
+        self.b = b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        self.models = [TruncatedGaussian1DAnalyticVariedLimits(a=a, b=b, var_names=[var_names[i]], hyper_var_names=['mu_spin', hyper_var_names[1], hyper_var_names[2], 'z_max_fixed_to_b']) for i in range(len(var_names))]
+
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+    def evaluate(self, data, params):
+        xi_spin = params[self.hyper_var_names[0]]
+        sigma_spin = params[self.hyper_var_names[1]]
+        z_min = params[self.hyper_var_names[2]]
+        prob  = truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
+        prob *= truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
+        prob *= xi_spin
+        prob += (1-xi_spin)/((1-z_min)**2)
+        return prob
+    
+    def __call__(self, data, params):
+        xi_spin = params[self.hyper_var_names[0]]
+        sigma_spin = params[self.hyper_var_names[1]]
+        z_min = params[self.hyper_var_names[2]]
+        new_params = {**params, 'mu_spin':1, 'z_max_fixed_to_b' : self.b}
+        prob  = self.models[0](data, new_params)           #truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
+        prob *= self.models[1](data, new_params)
+        prob *= xi_spin
+        prob += (1-xi_spin)/((1-z_min)**2)
+        return prob
 
 
 

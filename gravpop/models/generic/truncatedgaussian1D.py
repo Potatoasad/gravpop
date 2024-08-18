@@ -103,8 +103,24 @@ def logweight(x,dx,mu,sigma,a,b):
     return logA
 
 @jit
+def logweight_fixed_data_limits(x,dx,mu,sigma,a,b, a_data, b_data):
+    x_, sigma_ = transform_gaussians(x,dx,mu,sigma);
+    
+    logC_ = logC(x_, sigma_, a, b); #print(logC_)
+    logCmu = logC(mu ,sigma , a, b);# print(logCmu)
+    logCx = logC(x ,dx , a_data, b_data); #print(logCx)
+    logA = logC_ - logCmu - logCx
+    return logA
+
+@jit
 def loglikelihood_kernel1d(x, dx, mu, sigma, a, b):
     logA = logweight(x,dx,mu,sigma,a,b)
+    logB = jax.scipy.stats.norm.logpdf(x,loc=mu, scale=jnp.sqrt(dx**2 + sigma**2))     #normlogpdf(x,jnp.sqrt(Δx^2 + σ^2), μ)
+    return logA + logB
+
+@jit
+def loglikelihood_kernel1d_fixed_data_limits(x, dx, mu, sigma, a, b, a_data, b_data):
+    logA = logweight_fixed_data_limits(x,dx,mu,sigma,a,b, a_data, b_data)
     logB = jax.scipy.stats.norm.logpdf(x,loc=mu, scale=jnp.sqrt(dx**2 + sigma**2))     #normlogpdf(x,jnp.sqrt(Δx^2 + σ^2), μ)
     return logA + logB
 
@@ -210,7 +226,7 @@ class TruncatedGaussian1DAnalyticVariedLimits(AnalyticPopulationModel):
         
     def __call__(self, data, params):
         X_locations, X_scales, mu, sigma, x_min, x_max = self.get_data(data, params);
-        loglikes = loglikelihood_kernel1d(X_locations, X_scales, mu, sigma, x_min, x_max)
+        loglikes = loglikelihood_kernel1d_fixed_data_limits(X_locations, X_scales, mu, sigma, x_min, x_max, self.a, self.b)
         return jnp.exp(loglikes)
 
     def sample(self, df_hyper_samples, oversample=1):

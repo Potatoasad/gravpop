@@ -131,6 +131,23 @@ def compute_likelihood(mu_11, mu_12, mu_21, mu_22,
                                      mu_2.x1, mu_2.x2, sigma_2.s1, sigma_2.s2, sigma_2.rho)
     return final_prob
 
+@jit
+def compute_likelihood_fixed_data_limits(mu_11, mu_12, mu_21, mu_22,
+                       sigma_11, sigma_12, sigma_21, sigma_22,
+                       rho_1, rho_2, a=[0.0, 0.0], b=[1.0, 1.0], a_data=[0.0, 0.0], b_data=[1.0, 1.0]):
+    mu_1 = Vector2D(mu_11, mu_12)
+    sigma_1 = CovarianceMatrix2D(sigma_11, sigma_12, rho_1)
+    mu_2 = Vector2D(mu_21, mu_22)
+    sigma_2 = CovarianceMatrix2D(sigma_21, sigma_22, rho_2)
+    mu_, sigma_ = transform_component(mu_1, sigma_1, mu_2, sigma_2)
+    final_prob  = probability_mass(mu_, sigma_, a=a, b=b)
+    final_prob /= probability_mass(mu_1, sigma_1, a=a_data, b=b_data)
+    final_prob /= probability_mass(mu_2, sigma_2, a=a, b=b)
+    ## add part to compute loglikelihood here 
+    final_prob *= compute_normal_pdf(mu_1.x1, mu_1.x2, sigma_1.s1, sigma_1.s2, sigma_1.rho,
+                                     mu_2.x1, mu_2.x2, sigma_2.s1, sigma_2.s2, sigma_2.rho)
+    return final_prob
+
 
 
 @jit
@@ -253,11 +270,11 @@ class TruncatedGaussian2DAnalyticLimits(AnalyticPopulationModel):
         rho_kernel = data.get(self.var_name_1 + "_rho_kernel", 1e-6 * jnp.ones_like(data[self.var_name_1 + "_mu_kernel"]))
         a = [params.get(self.a_name_0, self.a[0]), params.get(self.a_name_1, self.a[1])];
         b = [params.get(self.b_name_0, self.b[0]), params.get(self.b_name_1, self.b[1])];
-        return compute_likelihood(mu_11=X_locations_1, mu_12=X_locations_2, 
+        return compute_likelihood_fixed_data_limits(mu_11=X_locations_1, mu_12=X_locations_2, 
                                    mu_21=mu_1, mu_22=mu_2,
                                    sigma_11=X_scales_1, sigma_12=X_scales_2, 
                                    sigma_21=sigma_1, sigma_22=sigma_2,
-                                   rho_1=rho_kernel, rho_2=rho, a=a, b=b)
+                                   rho_1=rho_kernel, rho_2=rho, a=a, b=b, a_data=self.a, b_data=self.b)
 
     def sample(self, df_hyper_samples, oversample=1):
         return ppd_truncCorrelatedanalytic(self, df_hyper_samples, oversample=oversample)

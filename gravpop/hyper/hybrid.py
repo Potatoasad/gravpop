@@ -33,6 +33,7 @@ class HybridPopulationLikelihood:
     event_names : Optional[List[str]] = None
     selection_sampled_models: Optional[str] = None
     selection_analytic_models: Optional[str] = None
+    kernel_fix_iterations : int = 10
     
     def __post_init__(self):
         if not ('weights' in self.event_data):
@@ -80,11 +81,11 @@ class HybridPopulationLikelihood:
         for var in self.analytic_limits.keys():
             if self.selection_data is not None:
                 sel = self.selection_data.selection_data
-                mus, sigmas = fix_kernels(sel[var + '_mu_kernel'], sel[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
+                mus, sigmas = fix_kernels(sel[var + '_mu_kernel'], sel[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1], n=self.kernel_fix_iterations)
                 self.selection_data.selection_data[var + '_mu_kernel'], self.selection_data.selection_data[var + '_sigma_kernel'] = mus, sigmas
 
             eventd = self.event_data
-            mus, sigmas = fix_kernels(eventd[var + '_mu_kernel'], eventd[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1])
+            mus, sigmas = fix_kernels(eventd[var + '_mu_kernel'], eventd[var  + '_sigma_kernel'], self.analytic_limits[var][0], self.analytic_limits[var][1], n=self.kernel_fix_iterations)
             self.event_data[var + '_mu_kernel'], self.event_data[var + '_sigma_kernel'] = mus, sigmas
 
         #print("Initialized Likelihood with variables:")
@@ -228,7 +229,7 @@ class HybridPopulationLikelihood:
     def from_file(cls, event_data_filename, selection_data_filename, sampled_models, analytic_models, 
                        SelectionClass=SelectionFunction, enforce_convergence=False, ignore_events=[], 
                        downsample=None, inflate_selection_spins=False, inflate_selection_spins_factor=4, downsample_selection=False,
-                       selection_sampled_models=None, selection_analytic_models=None):
+                       selection_sampled_models=None, selection_analytic_models=None, kernel_fix_iterations=10):
         event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
         #print(event_data.keys())
 
@@ -285,4 +286,4 @@ class HybridPopulationLikelihood:
 
         return cls(sampled_models=sampled_models, analytic_models=analytic_models, selection_sampled_models=selection_sampled_models, 
                   selection_analytic_models=selection_analytic_models, event_data=event_data, 
-                  selection_data=selection, enforce_convergence=enforce_convergence, event_names=event_names)
+                  selection_data=selection, enforce_convergence=enforce_convergence, event_names=event_names, kernel_fix_iterations=kernel_fix_iterations)

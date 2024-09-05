@@ -202,7 +202,7 @@ class TruncatedGaussian2DAnalytic(AnalyticPopulationModel):
         x_1, x_2 = data[self.var_name_1], data[self.var_name_2]
         mu_1, mu_2 = params[self.mu_name_1], params[self.mu_name_2]
         sigma_1, sigma_2 = params[self.sigma_name_1], params[self.sigma_name_2]
-        rho = params.get(self.rho_name, 0)
+        rho = params.get(self.rho_name, 1e-6)
         return compute_truncated_normal_pdf_on_samples(x_1, x_2, mu_1, mu_2, sigma_1, sigma_2, rho, a=self.a, b=self.b)
     
     def __call__(self, data, params):

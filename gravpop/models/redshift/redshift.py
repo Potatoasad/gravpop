@@ -66,7 +66,7 @@ class Redshift(SampledPopulationModel, RedshiftPopulationModel):
         Returns:
             float: Normalization factor.
         """
-        psi_of_z = self.psi_of_z({'redshift': self.zs}, params)
+        psi_of_z = self.psi_of_z({self.var_name: self.zs}, params)
         norm = jax.scipy.integrate.trapezoid(psi_of_z * self.dVdz_values / (1 + self.zs), self.zs)
         return norm
 

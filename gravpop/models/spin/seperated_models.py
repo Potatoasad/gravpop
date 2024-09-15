@@ -393,8 +393,8 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
 
     def sample(self, df_hyper_samples, oversample=1, **kwargs):
         kwargs['oversample'] = oversample
-        series_1 = self.models[0].sample(df_hyper_samples, **kwargs)
-        series_2 = self.models[1].sample(df_hyper_samples, **kwargs)
+        series_1 = self.models[0].sample(df_hyper_samples, **kwargs).reset_index(drop=True)
+        series_2 = self.models[1].sample(df_hyper_samples, **kwargs).reset_index(drop=True)
         N = len(df_hyper_samples)
         sampled_mixture = np.hstack([(df_hyper_samples[self.mixture_hyper_var_name] <= np.random.rand(N)) for _ in range(oversample)])
         d = {col : ((sampled_mixture * series_1[col]) + ((1 - sampled_mixture) * series_2[col])) for col in series_1.columns}

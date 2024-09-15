@@ -187,6 +187,33 @@ class GaussianIsotropicSpinOrientationsFloating(SampledPopulationModel, SpinPopu
 
 
 
+def sample_beta(alpha, beta, amax, size=1):
+    """
+    Generate samples from a scaled beta distribution.
+
+    Parameters:
+    alpha (np.array): Alpha parameter of the Beta distribution.
+    beta (np.array): Beta parameter of the Beta distribution.
+    amax (np.array): Maximum value to scale the Beta distribution to.
+    size (int): Number of samples to generate (default is 1).
+
+    Returns:
+    np.array: Scaled samples from the Beta distribution.
+    """
+    # Ensure alpha, beta, and amax are numpy arrays
+    alpha = np.asarray(alpha)
+    beta = np.asarray(beta)
+    amax = np.asarray(amax)
+
+    # Generate beta samples (values between 0 and 1)
+    samples = np.random.beta(alpha, beta, size=size)
+    
+    # Scale samples by amax
+    scaled_samples = samples * amax
+
+    return scaled_samples
+
+
 class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
 	r"""
 	Mixture of gaussian and isotropic distribution over spin orientations.
@@ -236,3 +263,11 @@ class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
 		if self.constraints is not None:
 			prob = jnp.where(are_both_within_constraint, prob, jnp.nan_to_num(-jnp.inf)*jnp.ones_like(prob))
 		return prob
+
+	def sample(self, df_hyper_samples, oversample=1):
+        amax = df_hyper_samples.get(self.hyper_var_names[2], 1)
+		alpha_chi, beta_chi, amax = self.converter(df_hyper_samples[self.hyper_var_names[0]], df_hyper_samples[self.hyper_var_names[1]], amax)
+		chi_1 = sample_beta(alpha_chi, beta_chi, amax, size=oversample);
+		chi_2 = sample_beta(alpha_chi, beta_chi, amax, size=oversample);
+		return pd.DataFrame({self.var_names[0] : chi_1, self.var_names[1] : chi_2})
+

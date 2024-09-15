@@ -454,8 +454,8 @@ class GaussianIsotropicSpinOrientationsIIDAnalytic1DWithMinimum(AnalyticPopulati
         xi_spin = params[self.hyper_var_names[0]]
         sigma_spin = params[self.hyper_var_names[1]]
         z_min = params[self.hyper_var_names[2]]
-        prob  = truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
-        prob *= truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin, high=self.b, low=self.a)
+        prob  = truncnorm(data[self.var_names[0]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
+        prob *= truncnorm(data[self.var_names[1]], mu=1, sigma=sigma_spin, high=self.b, low=z_min)
         prob *= xi_spin
         prob += (1-xi_spin)/((1-z_min)**2)
         return prob

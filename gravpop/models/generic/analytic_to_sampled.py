@@ -58,6 +58,10 @@ class FixedParameters(AnalyticPopulationModel):
         #    print(attr)
         #    setattr(self, attr, value)
 
+    @property
+    def limits(self):
+        return model.limits
+        
     def evaluate(self, data, params):
         return self.model.evaluate(data, {**params, **self.fixed_parameters})
 

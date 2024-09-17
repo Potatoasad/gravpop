@@ -60,8 +60,8 @@ class FixedParameters(AnalyticPopulationModel):
 
     @property
     def limits(self):
-        return model.limits
-        
+        return self.model.limits
+
     def evaluate(self, data, params):
         return self.model.evaluate(data, {**params, **self.fixed_parameters})
 

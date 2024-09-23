@@ -28,7 +28,7 @@ def has_spin_named_chi(posterior):
         cols = list(posterior.columns)
     else:
         cols = list(posterior.keys())
-    return any(('chi_1' in col) for col in cols)
+    return any(('chi' in col) for col in cols)
 
 def get_spin_mag_grid(posterior):
     if has_spin_named_chi(posterior):

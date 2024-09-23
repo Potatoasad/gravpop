@@ -74,13 +74,18 @@ class Uniform1DAnalyticVariedLimits(AnalyticPopulationModel):
         x_min       = params.get(self.x_min, self.a);
         x_max       = params.get(self.x_max, self.b);
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
-        prob = box(data[self.var_name], x_min,x_max)
+        prob = box(data[self.var_name], x_min,x_max)/(x_max - x_min)
         return prob
         
     def __call__(self, data, params):
         X_locations, X_scales, x_min, x_max = self.get_data(data, params);
+        X_stddevs_outside = jnp.where(X_locations <= x_max, 
+                                        jnp.where(X_locations <= x_min, 
+                                            (x_min - X_locations)/X_scales, jnp.zeros_like(X_locations)),
+                                                    (X_locations - x_max)/X_scales)
         loglikes = logC(X_locations, X_scales, x_min, x_max) - logC(X_locations, X_scales, self.a, self.b) - jnp.log(x_max - x_min)
-        return jnp.exp(loglikes)
+        likes = jnp.where(X_stddevs_outside < 4, jnp.where(Y_stddevs_outside < 4, jnp.exp(loglikes), jnp.zeros_like(loglikes)),jnp.zeros_like(loglikes))
+        return likes
 
     def sample(self, df_hyper_samples, oversample=1):
         N = len(df_hyper_samples)
@@ -161,15 +166,24 @@ class Uniform2DAnalyticVariedLimits(AnalyticPopulationModel):
         y_min       = params.get(self.y_min, self.a[1])
         y_max       = params.get(self.y_max, self.b[1])
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
-        prob = box(data[self.x_var_name], x_min,x_max) * box(data[self.y_var_name], y_min,y_max)
+        prob = box(data[self.x_var_name], x_min,x_max) * box(data[self.y_var_name], y_min,y_max) /((x_max - x_min)*(y_max - y_min))
         return prob
         
     def __call__(self, data, params):
         X_locations, X_scales, x_min, x_max, Y_locations, Y_scales, y_min, y_max, XY_rho = self.get_data(data, params);
+        X_stddevs_outside = jnp.where(X_locations <= x_max, 
+                                        jnp.where(X_locations <= x_min, 
+                                            (x_min - X_locations)/X_scales, jnp.zeros_like(X_locations)),
+                                                    (X_locations - x_max)/X_scales)
+        Y_stddevs_outside = jnp.where(Y_locations <= y_max, 
+                                        jnp.where(Y_locations <= y_min, 
+                                            (y_min - Y_locations)/Y_scales, jnp.zeros_like(Y_locations)),
+                                                    (Y_locations - y_max)/Y_scales)
         overlap = mvnorm2d(X_locations, Y_locations, X_scales, Y_scales, x_min, y_min, x_max, y_max, XY_rho)
         overlap /= (x_max - x_min)*(y_max - y_min)
         overlap /= mvnorm2d(X_locations, Y_locations, X_scales, Y_scales, self.a[0], self.a[1], self.b[0], self.b[1], XY_rho)
-        return overlap
+        new_overlap = jnp.where(X_stddevs_outside < 4, jnp.where(Y_stddevs_outside < 4, overlap, jnp.zeros_like(overlap)),jnp.zeros_like(overlap))
+        return new_overlap
 
     def sample(self, df_hyper_samples, oversample=1):
         N = len(df_hyper_samples)

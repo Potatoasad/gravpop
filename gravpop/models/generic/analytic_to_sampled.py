@@ -1,4 +1,7 @@
 from .abstract import *
+import numpy as np
+import jax.numpy as jnp
+import pandas as pd
 
 class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
     def __init__(self, model1, model2, mixture_hyper_var_name="eta_spin", var_names=None, hyper_var_names=None):
@@ -51,12 +54,8 @@ class FixedParameters(AnalyticPopulationModel):
     def __init__(self, model, fixed_parameters : dict):
         self.model = model
         self.fixed_parameters = fixed_parameters
-        self.hyper_var_names = model.hyper_var_names
-        self.var_names = model.var_names
-        self.b, self.a = model.b, model.a
-        #for attr, value in model.__dict__.items():
-        #    print(attr)
-        #    setattr(self, attr, value)
+        for attr, value in model.__dict__.items():
+            setattr(self, attr, value)
 
     @property
     def limits(self):

@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 from ..utils import *
 from .abstract import *
+from ..sample import *
 
 class TruncatedGaussian1D(SampledPopulationModel):
     r"""
@@ -192,6 +193,8 @@ class TruncatedGaussian1DAnalyticVariedLimits(AnalyticPopulationModel):
     def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma', 'x_min', 'x_max']):
         self.a = a
         self.b = b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
         self.var_name = var_names[0]
         self.mu_name = hyper_var_names[0]
         self.sigma_name = hyper_var_names[1]

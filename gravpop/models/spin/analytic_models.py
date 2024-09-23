@@ -202,6 +202,35 @@ class TruncatedGaussian1DIndependentAnalytic(AnalyticPopulationModel, SpinPopula
     def sample(self, df_hyper_samples, oversample=1):
         return ppd_truncUncorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
 
+class TruncatedGaussian1DIndependentAnalyticVariedLimits(AnalyticPopulationModel, SpinPopulationModel):
+    def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'chi_1_min', 'chi_1_max', 
+                                                                            'mu_chi_2', 'sigma_chi_2', 'chi_2_min', 'chi_2_max']):
+        self.a, self.b = a,b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
+        kwargs = {'a' : a, 'b' : b}
+        self.models = [TruncatedGaussian1DAnalyticVariedLimits(var_names=[var_names[i]], 
+                                                   hyper_var_names=[hyper_var_names[4*i], hyper_var_names[4*i + 1], hyper_var_names[4*i + 2], hyper_var_names[4*i + 3]], 
+                                                   **kwargs) for i in range(len(self.var_names))]
+    @property
+    def limits(self):
+        return {var : [self.a, self.b] for i,var in enumerate(self.var_names)}
+
+    def __call__(self, data, params):
+        result = self.models[0](data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i](data, params)
+        return result
+
+    def evaluate(self, data, params):
+        result = self.models[0].evaluate(data, params)
+        for i in range(1,len(self.models)):
+            result *= self.models[i].evaluate(data, params)
+        return result
+
+    def sample(self, df_hyper_samples, oversample=1):
+        return ppd_truncUncorrelatedanalytic(self, df_hyper_samples, oversample=oversample)
+
 
 class TruncatedGaussian1DMixtureZeroFloatingAndUniform(AnalyticPopulationModel, SpinPopulationModel):
     def __init__(self, a, b, var_names=['chi_1', 'chi_2'], hyper_var_names=['mu_chi_1', 'sigma_chi_1', 'mu_chi_2', 'sigma_chi_2','eta_spin']):

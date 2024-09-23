@@ -39,6 +39,7 @@ class Sampler:
     return_samples : bool = False
     max_tree_depth : Union[None, int, Tuple] = 6
     just_prior : bool = False
+    N_eff : bool = False
     #validation : bool = True
     
     def __post_init__(self):
@@ -58,6 +59,12 @@ class Sampler:
         if len(self.constraints) != 0:
             for i in range(len(self.constraints)):
                 numpyro.factor('user_defined_constraint_' + str(i), self.constraints[i].logpdf(self.x))
+
+
+        if self.Neff:
+            numpyro.deterministic('Selection N_eff', self.likelihood.compute_selection_N_eff_only(self.x))
+            numpyro.deterministic('Min Event N_eff', jnp.min(self.likelihood.compute_event_N_eff_only(self.x)))
+
 
         if self.just_prior:
             return None

@@ -61,7 +61,7 @@ class Sampler:
                 numpyro.factor('user_defined_constraint_' + str(i), self.constraints[i].logpdf(self.x))
 
 
-        if self.Neff:
+        if self.N_eff:
             numpyro.deterministic('Selection N_eff', self.likelihood.compute_selection_N_eff_only(self.x))
             numpyro.deterministic('Min Event N_eff', jnp.min(self.likelihood.compute_event_N_eff_only(self.x)))
 

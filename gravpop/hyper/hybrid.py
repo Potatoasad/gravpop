@@ -99,7 +99,7 @@ class HybridPopulationLikelihood:
     
     @staticmethod
     def log(x):
-        return jnp.log(x + 1e-50)
+        return jnp.log(x + 1e-30)
 
     def total_event_bayes_factors(self, data, params, N=None, detection_ratio=1):
         return self.analytic_event_bayes_factors(self.event_data, params, detection_ratio) \

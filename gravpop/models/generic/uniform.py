@@ -84,7 +84,7 @@ class Uniform1DAnalyticVariedLimits(AnalyticPopulationModel):
                                             (x_min - X_locations)/X_scales, jnp.zeros_like(X_locations)),
                                                     (X_locations - x_max)/X_scales)
         loglikes = logC(X_locations, X_scales, x_min, x_max) - logC(X_locations, X_scales, self.a, self.b) - jnp.log(x_max - x_min)
-        likes = jnp.where(X_stddevs_outside < 4, jnp.where(Y_stddevs_outside < 4, jnp.exp(loglikes), jnp.zeros_like(loglikes)),jnp.zeros_like(loglikes))
+        likes = jnp.where(X_stddevs_outside < 4, jnp.exp(loglikes), jnp.zeros_like(loglikes))
         return likes
 
     def sample(self, df_hyper_samples, oversample=1):

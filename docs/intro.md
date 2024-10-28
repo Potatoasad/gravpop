@@ -1,4 +1,4 @@
-This library allows one to perform a gravitational wave population analysis, (Hussain et al.](...), [Thrane et al.](https://arxiv.org/abs/1809.02293)) that allows exploration of population features even in narrow regions near the edges of a bounded domain. 
+This library allows one to perform a gravitational wave population analysis, ([Hussain et al.](...), [Thrane et al.](https://arxiv.org/abs/1809.02293)) that allows exploration of population features even in narrow regions near the edges of a bounded domain. 
 
 It is similar to [`gwpopulation`](https://github.com/ColmTalbot/gwpopulation) (with model implementations as close as possible) explicitly has a numpyro backend and can implement the TGMM population analysis method to probe narrow features.
 

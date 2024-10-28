@@ -1,6 +1,6 @@
 # gravpop
 
-This library allows one to perform a gravitational wave population analysis, inspired by methods from [Thrane et al.](https://arxiv.org/abs/1809.02293), with an extension based on a technique from [Hussain et al.](...) that allows exploration of population features even in narrow regions near the edges of a bounded domain. It is similar to [`gwpopulation`](https://github.com/ColmTalbot/gwpopulation) (with model implementations as close as possible) but with explicitly a numpyro backend and with the ability to implement the TGMM population analysis method.
+This library allows one to perform a gravitational wave population analysis, ([Hussain et al.](...), [Thrane et al.](https://arxiv.org/abs/1809.02293)) that allows exploration of population features even in narrow regions near the edges of a bounded domain. 
 
 > *Feel free to jump to the tutorial [here](https://potatoasad.github.io/gravpop/Examples/gravpop_tutorial.html)*
 

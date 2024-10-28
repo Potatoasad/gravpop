@@ -2,8 +2,7 @@
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://potatoasad.github.io/gravpop/index.html)
 [![PyPI version](https://badge.fury.io/py/gravpop.svg)](https://badge.fury.io/py/gravpop)
 
-
-This library allows one to perform a gravitational wave population analysis, ([Hussain et al.](...), [Thrane et al.](https://arxiv.org/abs/1809.02293)) that allows exploration of population features even in narrow regions near the edges of a bounded domain. 
+__Astrophysical population modelling for gravitational waves__ with the ability to probe __narrow population features__ over __bounded domains__.
 
 > *Feel free to jump to the tutorial [here](https://potatoasad.github.io/gravpop/Examples/gravpop_tutorial.html)*
 

@@ -8,7 +8,7 @@ with open('README.md') as f:
 
 setup(
     name='gravpop',
-    version='0.1.0',
+    version='0.1.1',
     description="""Package to perform astrophysical population modelling using gravitational waves, 
                    specifically for modelling using Truncated Gaussian Mixtures or a hybrid scheme 
                    -large portions of this code are structured and computed very similar to gwpop""",

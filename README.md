@@ -1,6 +1,6 @@
 # gravpop
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://potatoasad.github.io/gravpop/index.html)
-[![PyPI version](https://badge.fury.io/py/gravpop.svg)](https://badge.fury.io/py/gravpop)
+[![PyPI version](https://badge.fury.io/py/gravpop@2x.png)](https://badge.fury.io/py/gravpop)
 
 __Astrophysical population modelling for gravitational waves__ with the ability to probe __narrow population features__ over __bounded domains__.
 

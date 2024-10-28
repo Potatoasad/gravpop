@@ -18,6 +18,8 @@ class TruncatedGaussian1D(SampledPopulationModel):
     def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
         self.a = a
         self.b = b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
         self.var_name = var_names[0]
         self.mu_name = hyper_var_names[0]
         self.sigma_name = hyper_var_names[1]
@@ -142,6 +144,8 @@ class TruncatedGaussian1DAnalytic(AnalyticPopulationModel):
     def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
         self.a = a
         self.b = b
+        self.var_names = var_names
+        self.hyper_var_names = hyper_var_names
         self.var_name = var_names[0]
         self.mu_name = hyper_var_names[0]
         self.sigma_name = hyper_var_names[1]

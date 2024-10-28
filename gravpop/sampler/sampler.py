@@ -46,6 +46,8 @@ class Sampler:
         self.x = {}
         self._samples = None
         self.samples = None
+        if self.latex_symbols is None:
+            self.latex_symbols = {k : k for k in self.priors.keys()}
         if self.constraints is None:
             self.constraints = []
     

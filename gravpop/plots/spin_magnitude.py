@@ -45,12 +45,16 @@ class SpinMagintudePlot:
     confidence_interval : float = 0.95
     rate : bool = False
     chunk : int = 20
-    n_samples : int = 1000
+    n_samples : Optional[int] = 1000
     
     def __post_init__(self):
         acceptable_sample_names = self.model.hyper_var_names + ['rate']
         total_indices = self.hyper_posterior_samples[next(iter(self.hyper_posterior_samples.keys()))].size
-        self.index_sampling = np.random.randint(total_indices, size=self.n_samples)
+        print(total_indices)
+        if self.n_samples is not None:
+            self.index_sampling = np.random.randint(total_indices, size=self.n_samples)
+        else:
+            self.index_sampling = np.arange(total_indices)
         self.hyper_posterior_samples = {col:value[self.index_sampling] for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
         #self.hyper_posterior_samples = {col:value for col,value in self.hyper_posterior_samples.items() if col in acceptable_sample_names}
         self._shapes = {key:0 for key in self.hyper_posterior_samples.keys()}
@@ -109,6 +113,29 @@ class SpinMagintudePlot:
             plt.colorbar(contour_plot, ax=axes[i])
             axes[i].set_ylabel(r"$\chi_2$")
             axes[i].set_xlabel(r"$\chi_1$")
+
+        return fig
+
+    def spin_2D_plot_old_mean(self, levels=None, log_scale=False, dpi=200, func_to_use=jnp.mean):
+        self.compute_if_not_computed()
+        spin_all = self.result
+        spin_1s = self.spin_grid.data[self.spin_1_name]
+        spin_2s = self.spin_grid.data[self.spin_2_name]
+        #spin_median = jnp.quantile(spin_all, 0.5, axis=0)
+        #spin_lower = jnp.quantile(spin_all, quantiles[0], axis=0)
+        #spin_upper = jnp.quantile(spin_all, quantiles[1], axis=0)
+
+        import matplotlib.pyplot as plt
+
+        fig, axes = plt.subplots(1, figsize=(5,5), dpi=dpi)
+        if log_scale:
+            contour_plot = axes.contourf(spin_1s, spin_2s, jnp.log(func_to_use(spin_all, axis=0)), levels=levels)
+        else:
+            contour_plot = axes.contourf(spin_1s, spin_2s, func_to_use(spin_all, axis=0), levels=levels)
+        axes.set_title(f"Posterior Predictive")
+        plt.colorbar(contour_plot, ax=axes)
+        axes.set_ylabel(r"$\chi_2$")
+        axes.set_xlabel(r"$\chi_1$")
 
         return fig
 

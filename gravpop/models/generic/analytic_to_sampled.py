@@ -3,6 +3,51 @@ import numpy as np
 import jax.numpy as jnp
 import pandas as pd
 
+def make_list_if_not(x):
+    if not isinstance(x, list):
+        return [x]
+
+class ProductModel(AbstractPopulationModel):
+    def __init__(self, models):
+        self.var_names = []
+        self.hyper_var_names = []
+        self.a = []; self.b = [];
+        for model in models:
+            self.var_names = self.var_names + model.var_names
+            self.hyper_var_names = self.hyper_var_names + model.hyper_var_names
+            self.a = self.a + make_list_if_not(model.a);
+            self.b = self.b + make_list_if_not(model.b);
+
+        self.models = models
+
+    @property
+    def limits(self):
+        lims = {}
+        for model in self.models:
+            lims = {**lims, **model.limits}
+        return lims
+
+    def __call__(self, data, params):
+        result  = self.models[0](data, params);
+        for i in range(1,len(self.models)):
+            result *= self.models[i](data, params);
+        return result
+
+    def evaluate(self, data, params):
+        result  = self.models[0].evaluate(data, params);
+        for i in range(1,len(self.models)):
+            result *= self.models[i].evaluate(data, params);
+        return result
+
+    def sample(self, df_hyper_samples, oversample=1, **kwargs):
+        kwargs['oversample'] = oversample
+        series_s = []
+        for model in self.models:
+            series_s.append(model.sample(df_hyper_samples, **kwargs).reset_index(drop=True))
+
+        N = len(df_hyper_samples)
+        return pd.concat(series_s, axis=1)
+
 class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
     def __init__(self, model1, model2, mixture_hyper_var_name="eta_spin", var_names=None, hyper_var_names=None):
         if var_names is not None:
@@ -35,7 +80,7 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel):
         series_1 = self.models[0].sample(df_hyper_samples, **kwargs).reset_index(drop=True)
         series_2 = self.models[1].sample(df_hyper_samples, **kwargs).reset_index(drop=True)
         N = len(df_hyper_samples)
-        sampled_mixture = np.hstack([(df_hyper_samples[self.mixture_hyper_var_name] <= np.random.rand(N)) for _ in range(oversample)])
+        sampled_mixture = np.hstack([(df_hyper_samples[self.mixture_hyper_var_name] >= np.random.rand(N)) for _ in range(oversample)])
         d = {col : ((sampled_mixture * series_1[col]) + ((1 - sampled_mixture) * series_2[col])) for col in series_1.columns}
         return pd.DataFrame(d)
 

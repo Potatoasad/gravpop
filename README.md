@@ -1,6 +1,7 @@
 # gravpop
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14003076.svg)](https://doi.org/10.5281/zenodo.14003076)
+<a href="https://badge.fury.io/py/gravpop"><img src="https://badge.fury.io/py/gravpop@2x.png" alt="PyPI version" height="18"></a>
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://potatoasad.github.io/gravpop/index.html)
-[![PyPI version](https://badge.fury.io/py/gravpop.png)](https://badge.fury.io/py/gravpop)
 
 __Astrophysical population modelling for gravitational waves__ with the ability to probe __narrow population features__ over __bounded domains__.
 

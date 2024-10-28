@@ -3,9 +3,14 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+####################################
 gravpop
-============================================================================================================
-*Gravitational-wave population inference with the ability to explore narrow population features with minimal edge bias.*
+####################################
+
+
+====================================
+Gravitational-wave population inference for narrow population features with minimal edge bias.
+====================================
 
 .. include:: intro.md
    :parser: myst_parser.sphinx_

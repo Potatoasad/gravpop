@@ -20,3 +20,8 @@ $$
 This form of the posterior allows analytic evaluation in the analytic sector, and falls back to using Monte-Carlo based estimation in the sampled sector.
 
 For implementing the Truncated Gaussian Mixture Model fit, see [truncatedgaussianmixtures](https://github.com/Potatoasad/truncatedgaussianmixtures), a package designed to fit data to mixtures of truncated Gaussians.
+
+To use this package you can use `pip`: 
+```bash
+pip install gravpop
+```

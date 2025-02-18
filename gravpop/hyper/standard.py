@@ -123,11 +123,11 @@ class PopulationLikelihood:
         return jnp.nan_to_num( loglikes_event.sum() - self.N_events * loglikes_selection )
 
     @classmethod
-    def from_file(cls, event_data_filename, selection_data_filename, models, SelectionClass=SelectionFunction, enforce_convergence=False, samples_per_event=1000):
+    def from_file(cls, event_data_filename, selection_data_filename, models, SelectionClass=SelectionFunction, enforce_convergence=False, samples_per_event=1000, ignore_events=[]):
         event_file_ext = event_data_filename.split('.')[-1]
         if event_file_ext in ('hdf5', 'h5'):
             # Extract the entire hdf5 as a nested dictionary of jax arrays
-            event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
+            event_data, event_names = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename, ignore_events=ignore_events))
         elif event_file_ext == 'pkl':
             # Extract a posteriors.pkl file usually an intermediate data product of gwpopulation_pipe
             # Must be a pickle of a list of pandas dataframes

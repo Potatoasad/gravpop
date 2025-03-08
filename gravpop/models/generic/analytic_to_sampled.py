@@ -6,6 +6,8 @@ import pandas as pd
 def make_list_if_not(x):
     if not isinstance(x, list):
         return [x]
+    else:
+        return x
 
 class ProductModel(AbstractPopulationModel):
     def __init__(self, models):

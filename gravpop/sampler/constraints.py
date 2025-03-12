@@ -4,6 +4,7 @@ from ..models.spin import *
 from ..models.utils import box
 import jax
 import jax.numpy as jnp
+from jax.scipy.stats import norm
 
 def alpha_beta_max_to_mu_var_max(alpha, beta, amax):
     mu = alpha / (alpha + beta) * amax
@@ -17,6 +18,31 @@ def mu_var_max_to_alpha_beta_max(mu, var, amax):
     alpha = (mu ** 2 * (1 - mu) - mu * var) / var
     beta = (mu * (1 - mu) ** 2 - (1 - mu) * var) / var
     return alpha, beta, amax
+
+def truncated_normal_stats(mu, var, a=0, b=1):
+    sigma = jnp.sqrt(var)
+    alpha = (a - mu) / sigma
+    beta = (b - mu) / sigma
+    
+    Z = norm.cdf(beta) - norm.cdf(alpha)
+    phi_alpha = norm.pdf(alpha)
+    phi_beta = norm.pdf(beta)
+    
+    truncated_mean = mu + sigma * (phi_alpha - phi_beta) / Z
+    truncated_var = var * (1 + (alpha * phi_alpha - beta * phi_beta) / Z - ((phi_alpha - phi_beta) / Z) ** 2)
+    
+    return jnp.stack([truncated_mean, truncated_var], axis=0)
+
+def det_of_map_var(mu, sigma):
+        return jnp.linalg.det(
+            jax.jacrev(lambda mu_sig : truncated_normal_stats(mu_sig[0,...], mu_sig[1,...]**2, 0, 1))(jnp.stack([mu, sigma], axis=0))
+        )
+
+
+def det_of_map_std(mu, sigma):
+        return jnp.linalg.det(
+            jax.jacrev(lambda mu_sig : truncated_normal_stats(mu_sig[0,...], mu_sig[1,...], 0, 1))(jnp.stack([mu, sigma], axis=0))
+        )
 
 
 @dataclass
@@ -37,6 +63,34 @@ class AlphaBetaConstraint:
 		both_within_constraint = is_alpha_within_constraint & is_beta_within_constraint
 
 		return jnp.log(box(alpha, self.alpha[0], self.alpha[1]))  + jnp.log(box(beta, self.beta[0], self.beta[1]))
+
+@dataclass
+class FlatInMeanVarExact:
+    hyper_var_names : List[str] = field(default_factory=lambda : ['mu_chi', 'sigma_chi'])
+    custom_additional_logprob_func : Optional[Any] = lambda E,V,Z: 0.0
+
+    @staticmethod
+    def log_prior_mean_var_trunc_norm(mu, sigma):
+        return jnp.log(det_of_map_var(mu,sigma))
+
+    def logpdf(self, x):
+        mu = x[self.hyper_var_names[0]]
+        sigma = x[self.hyper_var_names[1]]
+        return self.log_prior_mean_var_trunc_norm(mu, sigma)
+
+@dataclass
+class FlatInMeanStdExact:
+    hyper_var_names : List[str] = field(default_factory=lambda : ['mu_chi', 'sigma_chi'])
+    custom_additional_logprob_func : Optional[Any] = lambda E,V,Z: 0.0
+
+    @staticmethod
+    def log_prior_mean_var_trunc_norm(mu, sigma):
+        return jnp.log(det_of_map_std(mu,sigma))
+
+    def logpdf(self, x):
+        mu = x[self.hyper_var_names[0]]
+        sigma = x[self.hyper_var_names[1]]
+        return self.log_prior_mean_var_trunc_norm(mu, sigma)
 
 
 @dataclass

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Dict, Optional, Any
 from ..models.spin import *
 from ..models.utils import box
 import jax
@@ -42,6 +42,7 @@ class AlphaBetaConstraint:
 @dataclass
 class FlatInMeanVar:
     hyper_var_names : List[str] = field(default_factory=lambda : ['mu_chi', 'sigma_chi'])
+    custom_additional_logprob_func : Optional[Any] = lambda E,V,Z: 0.0
     
     def mean_var_Z_trunc_norm(self, mu, sigma):
         alpha,  beta = (-mu/sigma), ((1-mu)/sigma)
@@ -57,6 +58,7 @@ class FlatInMeanVar:
         log_prob = 5*jnp.log(Z)
         log_prob += -0.5*((jnp.log(V)-jnp.log(0.015))/(1.5))**2
         log_prob +=  -0.1*(0.5*((V-0.04)/(0.01))**2 + 0.5*((E-0.5)/(0.3))**2)
+        log_prob += self.custom_additional_logprob_func(E,V,Z)
         return log_prob
 
     def logpdf(self, x):

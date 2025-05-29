@@ -25,9 +25,80 @@ import pandas as pd
 import numpyro
 import numpy as np
 
+class PriorBlock:
+    pass
+
+class LowerTriangularUniform(PriorBlock):
+    def __init__(self, var_names, limits=None):
+        self.x1 = var_names[0];
+        self.x2 = var_names[1];
+        if limits is not None:
+            self.limits = dict(zip(var_names, limits))
+        else:
+            self.limits = {k : (0,1) for k in var_names}
+    
+    def sample(self, x):
+        x1 = numpyro.sample(self.x1, dist.Uniform(*self.limits[self.x1]))
+        x2 = numpyro.sample(self.x2, dist.Uniform(self.limits[self.x2][0], x1))
+        
+        x[self.x1] = x1;
+        x[self.x2] = x2;
+        
+        numpyro.factor('lowertr_jac', jnp.log(x1-self.limits[self.x1][0]))
+        
+class ConditionalPriorTriangular(PriorBlock):
+    def __init__(self, var_names, limits=None):
+        self.x1 = var_names[0];
+        self.x2 = var_names[1];
+        if limits is not None:
+            self.limits = dict(zip(var_names, limits))
+        else:
+            self.limits = {k : (0,1) for k in var_names}
+    
+    def sample(self, x):
+        x1 = numpyro.sample(self.x1, dist.Uniform(*self.limits[self.x1]))
+        x2 = numpyro.sample(self.x2, dist.Uniform(self.limits[self.x2][0], x1))
+        
+        x[self.x1] = x1;
+        x[self.x2] = x2;
+        
+        
+import random
+import string
+
+def create_random_variable_name(length=8):
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
+class DirchletPrior(PriorBlock):
+    def __init__(self, var_names, concentration=None, dirchlet_name=None):
+        self.var_names = var_names
+        if concentration is None:
+            self.concentration = jnp.ones(len(var_names))
+        else:
+            self.concentration = jnp.array(concentration)
+        self.dirchlet_name = dirchlet_name or "DirchletPriorBlock_"+create_random_variable_name()
+        
+    def sample(self, x):
+        xs = numpyro.sample(self.dirchlet_name, dist.Dirichlet(self.concentration))
+        for i in range(len(self.var_names)):
+            x[self.var_names[i]] = xs[i]
+    
+    def cleanup(self, samples):
+        for i in range(len(self.var_names)):
+            samples[self.var_names[i]] = samples[self.dirchlet_name][..., i]
+            
+        del samples[self.dirchlet_name]
+        
+
+class DiracDelta:
+    def __init__(self, value):
+        self.value = value
+    
+
 @dataclass
 class Sampler:
-    priors : Dict[str, dist.Distribution]
+    priors : Dict[str, Union[dist.Distribution, PriorBlock]]
     latex_symbols : Dict[str, str]
     likelihood : Any = field(repr=False)
     constraints : List = field(default_factory=(lambda : []))
@@ -55,6 +126,8 @@ class Sampler:
         for var,dist in self.priors.items():
             if type(dist) == DiracDelta:
                 self.x[var] = dist.value
+            elif isinstance(dist, PriorBlock):
+                dist.sample(self.x)
             else:
                 self.x[var] = numpyro.sample(var, dist)
 
@@ -91,6 +164,13 @@ class Sampler:
             mcmc.print_summary()
         self._samples = mcmc.get_samples()
         
+        ## Clean up the multidimenional samples returned using
+        ## clean up methods in particular prior blocks
+        for p in self.priors.values():
+            cleanup_func = getattr(p, "cleanup", None)
+            if cleanup_func is not None:
+                cleanup_func(self._samples)
+        
         self.samples = pd.DataFrame(self._samples)
         #if self.latex_symbols:
         #    self.samples.rename(self.latex_symbols, inplace=True, axis=1)
@@ -100,7 +180,7 @@ class Sampler:
     def corner(self, color='k', truth=None, truth_color='b'):
         import corner
         figure = corner.corner(self.samples.values,
-                                labels=[self.latex_symbols[col] for col in self.samples.columns],
+                                labels=[self.latex_symbols.get(col, col) for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],
                                 show_titles=True,
                                 color=color,
@@ -113,7 +193,7 @@ class Sampler:
     def corner_on_fig(self, fig, color='k', truth=None, truth_color='b'):
         import corner
         figure = corner.corner(self.samples.values,
-                                labels=[self.latex_symbols[col] for col in self.samples.columns],
+                                labels=[self.latex_symbols.get(col, col) for col in self.samples.columns],
                                 quantiles=[0.16, 0.5, 0.84],
                                 show_titles=True,
                                 color=color,

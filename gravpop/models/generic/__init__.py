@@ -3,4 +3,5 @@ from .uniform import *
 from .gaussian import *
 from .truncatedgaussian1D import *
 from .truncatedgaussian2D import *
+from .truncatedgaussianND import *
 from .analytic_to_sampled import *

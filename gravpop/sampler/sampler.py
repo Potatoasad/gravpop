@@ -28,6 +28,45 @@ import numpy as np
 class PriorBlock:
     pass
 
+class CovarianceMatrix(PriorBlock):
+    def __init__(self, ndims, var_name, sigma_distribution, corr_cholesky_distribution):
+        self.var_name = var_name
+        self.ndims = ndims
+        self.sigma_distribution = sigma_distribution
+        self.corr_cholesky_distribution = corr_cholesky_distribution
+        
+    def sample(self, x):
+        L = numpyro.sample(self.var_name + "_corr_", self.corr_cholesky_distribution)
+        s = numpyro.sample(self.var_name + "_sig_", self.sigma_distribution)
+        C = L * s[..., None]  # (..., d, d)
+        x[self.var_name] = C @ jnp.swapaxes(C, -1, -2)
+        numpyro.deterministic(self.var_name, x[self.var_name])
+
+    def cleanup(self, samples):
+        for i in range(self.ndims):
+            for j in range(self.ndims):
+                samples[self.var_name + f"_{i}_{j}"] = samples[self.var_name][...,i,j]
+
+        del samples[self.var_name]
+        del samples[self.var_name  + "_corr_"]
+        del samples[self.var_name + "_sig_"]
+
+class UniformVector(PriorBlock):
+    def __init__(self, ndims, var_name, vector_distribution):
+        self.var_name = var_name
+        self.ndims = ndims
+        self.vector_distribution = vector_distribution
+        
+    def sample(self, x):
+        vecs = numpyro.sample(self.var_name, self.vector_distribution)
+        x[self.var_name] = vecs
+
+    def cleanup(self, samples):
+        for i in range(self.ndims):
+            samples[self.var_name + f"_{i}"] = samples[self.var_name][...,i]
+
+        del samples[self.var_name]
+
 class LowerTriangularUniform(PriorBlock):
     def __init__(self, var_names, limits=None):
         self.x1 = var_names[0];

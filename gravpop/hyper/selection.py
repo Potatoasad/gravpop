@@ -66,6 +66,41 @@ class SelectionFunction:
 
 		return N_effs
 
+	## Act like a dict
+
+	def __getitem__(self, key):
+		return self.selection_data[key]
+
+	def __len__(self):
+		return len(self.selection_data)
+
+	def copy(self):
+		return self.selection_data.copy()
+
+	def has_key(self, k):
+		return k in self.selection_data
+
+	def update(self, *args, **kwargs):
+		return self.selection_data.update(*args, **kwargs)
+
+	def keys(self):
+		return self.selection_data.keys()
+
+	def values(self):
+		return self.selection_data.values()
+
+	def items(self):
+		return self.selection_data.items()
+
+	def pop(self, *args):
+		return self.selection_data.pop(*args)
+
+	def __contains__(self, item):
+		return item in self.selection_data
+
+	def __iter__(self):
+		return iter(self.selection_data)
+
 
 
 

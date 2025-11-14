@@ -4,6 +4,7 @@ from ..models.generic.abstract import *
 from ..models.utils import *
 from ..utils import *
 import numpy as np
+from .selection import SelectionFunction
 
 
 from dataclasses import dataclass, field
@@ -14,16 +15,18 @@ from functools import partial
 class MarginalizedHybridLikelihood:
     analytic_models : List[AbstractPopulationModel]
     sampled_models : List[AbstractPopulationModel]
-    data : Dict[str,jax.Array] = None
-    selection_data : Dict = None
+    event_data : Dict[str,jax.Array] = None
+    selection_data : Optional[Union[Dict[str, jax.Array], SelectionFunction]] = field(default=None, repr=False) 
     sampled_models_selection : List[AbstractPopulationModel] = None
     analytic_models_selection : List[AbstractPopulationModel] = None
     compute_variance = False
 
     def __post_init__(self):
-        self.E, self.N, self.K = self.data['responsibilities'].shape
-        if 'prior' not in self.data:
-            self.data['prior'] = jnp.ones((self.E, self.N))
+        self.E, self.N, self.K = self.event_data['responsibilities'].shape
+        self.N_sel, self.K_sel = self.selection_data['responsibilities'].shape
+
+        if 'prior' not in self.event_data:
+            self.event_data['prior'] = jnp.ones((self.E, self.N))
 
         if self.analytic_models_selection is None:
             self.analytic_models_selection =  self.analytic_models
@@ -57,13 +60,13 @@ class MarginalizedHybridLikelihood:
 
     def logpdf(self, param):
         E, N,K = self.E, self.N, self.K
-        analytic_lpdf, sampled_lpdf = self.compute_analytic_and_sampled_lpdf(self.data, param,
+        analytic_lpdf, sampled_lpdf = self.compute_analytic_and_sampled_lpdf(self.event_data, param,
                                                                              self.analytic_models, 
                                                                              self.sampled_models, 
                                                                              N, K, E)
 
-        reweighted_N = (sampled_lpdf / self.data['prior']) # ExN
-        Z = self.data['responsibilities'] # E x N x K
+        reweighted_N = (sampled_lpdf / self.event_data['prior']) # ExN
+        Z = self.event_data['responsibilities'] # E x N x K
 
         per_sample_weights = jnp.einsum("enk,ek->en", Z, analytic_lpdf);
         per_sample_weights *= reweighted_N;
@@ -82,11 +85,11 @@ class MarginalizedHybridLikelihood:
             analytic_lpdf_sel, sampled_lpdf_sel = self.compute_analytic_and_sampled_lpdf(self.selection_data, param,
                                                                                  self.analytic_models_selection, 
                                                                                  self.sampled_models_selection, 
-                                                                                 N, K, E=None)
-            reweighted_N_sel = (sampled_lpdf_sel / self.selection_data['prior']) # ExN
-            Z_sel = self.selection_data['responsibilities'] # E x N x K
+                                                                                 self.N_sel, self.K_sel, E=None)
+            reweighted_N_sel = (sampled_lpdf_sel / self.selection_data['prior']) # N
+            Z_sel = self.selection_data['responsibilities'] # N x K
 
-            per_sample_weights_sel = jnp.einsum("enk,ek->en", Z_sel, analytic_lpdf_sel);
+            per_sample_weights_sel = jnp.einsum("nk,k->n", Z_sel, analytic_lpdf_sel);
             per_sample_weights_sel *= reweighted_N_sel;
 
             if self.compute_variance == True:

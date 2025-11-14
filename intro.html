@@ -1,0 +1,125 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>&lt;no title&gt; &mdash; gravpop 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=2709fde1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            gravpop
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Examples/gravpop_tutorial.html">Gravpop tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples/gravpop_tutorial.html#Data">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples/gravpop_tutorial.html#Models">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples/gravpop_tutorial.html#Population-Likelihood">Population Likelihood</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Examples/gravpop_tutorial.html#Sampling">Sampling</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">gravpop</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/intro.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>This library allows one to perform a gravitational wave population analysis, (<a class="reference external" href="https://arxiv.org/abs/2510.20010">Hussain et al.</a>, <a class="reference external" href="https://arxiv.org/abs/1809.02293">Thrane et al.</a>) that allows exploration of population features even in narrow regions near the edges of a bounded domain.</p>
+<p>It is similar to <a class="reference external" href="https://github.com/ColmTalbot/gwpopulation"><code class="docutils literal notranslate"><span class="pre">gwpopulation</span></code></a> (with model implementations as close as possible) explicitly has a numpyro backend and can implement the TGMM population analysis method to probe narrow features.</p>
+<blockquote>
+<div><p><em>Feel free to jump to the tutorial <a class="reference external" href="https://potatoasad.github.io/gravpop/Examples/gravpop_tutorial.html">here</a></em></p>
+</div></blockquote>
+<p>The approach splits parameter space into two sectors:</p>
+<ul class="simple">
+<li><p>An <strong>analytic sector</strong> (<span class="math notranslate nohighlight">\(\theta^a\)</span>), where the population model is represented as a weighted sum of multivariate truncated normal distributions, allowing for an analytical computation of the population likelihood.</p></li>
+<li><p>A <strong>sampled sector</strong> (<span class="math notranslate nohighlight">\(\theta^s\)</span>), which accommodates more general population models and utilizes Monte Carlo estimates of the population likelihood.</p></li>
+</ul>
+<p>This technique represents posterior samples using a truncated Gaussian mixture model (TGMM), where the population likelihood, <span class="math notranslate nohighlight">\(p(x)\)</span>, is expressed as a sum of truncated multivariate Gaussian components:</p>
+<div class="math notranslate nohighlight">
+\[
+p(x) = \sum_k w_k \, \phi_{[a,b]}(x \mid \mu_k, \Sigma_k).
+\]</div>
+<p>This form of the posterior allows analytic evaluation in the analytic sector, and falls back to using Monte-Carlo based estimation in the sampled sector.</p>
+<p>For implementing the Truncated Gaussian Mixture Model fit, see <a class="reference external" href="https://github.com/Potatoasad/truncatedgaussianmixtures">truncatedgaussianmixtures</a>, a package designed to fit data to mixtures of truncated Gaussians.</p>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Asad Hussain.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

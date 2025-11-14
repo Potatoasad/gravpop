@@ -95,6 +95,9 @@ class SelectionFunction:
 	def pop(self, *args):
 		return self.selection_data.pop(*args)
 
+	def get(self, *args):
+		return self.selection_data.get(*args)
+
 	def __contains__(self, item):
 		return item in self.selection_data
 

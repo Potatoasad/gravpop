@@ -3,10 +3,10 @@ import jax.numpy as jnp
 import numpy as np
 import astropy
 from astropy.cosmology import Planck15
-from ..generic import SampledPopulationModel, RedshiftPopulationModel
+from ..generic import SampledPopulationModel, RedshiftPopulationModel, InvertiblePopulationModel
 from ..utils import box
 
-class Redshift(SampledPopulationModel, RedshiftPopulationModel):
+class Redshift(SampledPopulationModel, RedshiftPopulationModel, InvertiblePopulationModel):
     """A class representing redshifts and their associated probability distributions.
 
     Attributes:
@@ -123,6 +123,35 @@ class Redshift(SampledPopulationModel, RedshiftPopulationModel):
 
     def total_four_volume(self, params, analysis_time):
         return self.normalization(params) / 1e9 * analysis_time
+
+    def ppf(self, u, params):
+        """
+        Grid-based inverse CDF for p(z | Lambda).
+
+        p(z) = psi(z) * dV_c/dz / (1+z) / Z(Lambda)
+
+        The dVdz grid and z-grid are precomputed in __init__; psi_of_z is
+        evaluated at inference time (it depends on params).  The CDF is built
+        via cumulative trapezoid and inverted with jnp.interp.
+
+        Parameters
+        ----------
+        u      : shape (N_samp,)
+        params : dict
+
+        Returns
+        -------
+        dict {var_name: array of shape (N_samp,)}
+        """
+        psi  = self.psi_of_z({self.var_name: self.zs}, params)
+        p_z  = psi * self.dVdz_values / (1.0 + self.zs)
+        dx   = jnp.diff(self.zs)
+        cdf_z = jnp.concatenate([
+            jnp.array([0.0]),
+            jnp.cumsum((p_z[:-1] + p_z[1:]) * 0.5 * dx)
+        ])
+        cdf_z = cdf_z / jnp.clip(cdf_z[-1], 1e-30)
+        return {self.var_name: jnp.interp(u, cdf_z, self.zs)}
 
 
 class PowerLawRedshift(Redshift):

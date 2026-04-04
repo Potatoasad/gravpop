@@ -4,16 +4,16 @@ from ..utils import *
 from .abstract import *
 from ..sample import *
 
-class TruncatedGaussian1D(SampledPopulationModel):
+class TruncatedGaussian1D(SampledPopulationModel, InvertiblePopulationModel):
     r"""
-    Truncated Gaussian Distribution. 
+    Truncated Gaussian Distribution.
 
     Event Level Parameters:         :math:`x`
-    Population Level Parameters:    :math:`\mu, \sigma` 
+    Population Level Parameters:    :math:`\mu, \sigma`
 
     .. math::
-    
-        P(x | \mu, \sigma) = \mathcal{N}_{[a,b]}))(x | \mu, \sigma) 
+
+        P(x | \mu, \sigma) = \mathcal{N}_{[a,b]}))(x | \mu, \sigma)
     """
     def __init__(self, a, b, var_names=['x'], hyper_var_names=['mu', 'sigma']):
         self.a = a
@@ -23,18 +23,43 @@ class TruncatedGaussian1D(SampledPopulationModel):
         self.var_name = var_names[0]
         self.mu_name = hyper_var_names[0]
         self.sigma_name = hyper_var_names[1]
-        
+
     def get_data(self, data, params):
         Xs          = data[self.var_name];
         mu          = params[self.mu_name]
         sigma       = params[self.sigma_name]
         return Xs, mu, sigma
-    
+
     def __call__(self, data, params):
         Xs, mu, sigma = self.get_data(data, params);
         #loglikes = jax.scipy.special.logsumexp( jnp.log(truncnorm(Xs, mu, sigma, low=a, high=b)) , axis=-1) - jnp.log(Xs.shape[-1])
         prob = truncnorm(Xs, mu, sigma, low=self.a, high=self.b)
         return prob
+
+    def ppf(self, u, params):
+        """
+        Analytic inverse CDF of the truncated normal.
+
+        Derivation: F(x) = [Phi((x-mu)/sigma) - Phi(alpha)] / [Phi(beta) - Phi(alpha)]
+        Inverting:  x = mu + sigma * Phi^{-1}(Phi(alpha) + u * [Phi(beta) - Phi(alpha)])
+
+        Parameters
+        ----------
+        u      : shape (N_samp,)  -- uniform draws in (0, 1)
+        params : dict with mu_name and sigma_name keys
+
+        Returns
+        -------
+        dict {var_name: array of shape (N_samp,)}
+        """
+        mu    = params[self.mu_name]
+        sigma = params[self.sigma_name]
+        alpha = (self.a - mu) / sigma
+        beta  = (self.b - mu) / sigma
+        p_low  = jax.scipy.stats.norm.cdf(alpha)
+        p_high = jax.scipy.stats.norm.cdf(beta)
+        x = mu + sigma * jax.scipy.special.ndtri(p_low + u * (p_high - p_low))
+        return {self.var_name: x}
 
 
 from jax import jit

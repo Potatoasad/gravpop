@@ -1,5 +1,7 @@
 import jax
 import jax.numpy as jnp
+import pandas as pd
+import numpy as np
 from ..utils import *
 from ..generic import *
 
@@ -19,7 +21,7 @@ def mu_var_max_to_alpha_beta_max(mu, var, amax):
     return alpha, beta, amax
 
 
-class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulationModel):
+class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulationModel, InvertiblePopulationModel):
     r"""
     Mixture of gaussian and isotropic distribution over spin orientations.
     Performs a monte carlo estimate of the population likelihood. 
@@ -50,6 +52,55 @@ class GaussianIsotropicSpinOrientationsIID(SampledPopulationModel, SpinPopulatio
         prob *= xi_spin
         prob += (1-xi_spin)/4
         return prob
+
+    @property
+    def n_draws(self):
+        # 3 draws: u[:,0] selects component, u[:,1] -> z1, u[:,2] -> z2
+        return 3
+
+    def ppf(self, u, params):
+        """
+        Hierarchical inverse CDF for the joint (cos_tilt_1, cos_tilt_2) mixture.
+
+        The joint is a 2-component mixture:
+            xi  * TruncNorm(z1|1,sigma) * TruncNorm(z2|1,sigma)   [aligned]
+          + (1-xi)/4                                                [isotropic]
+
+        Within each component z1 and z2 are independent, so we sample:
+            u[:,0] < xi  => Gaussian component; else Uniform component
+            u[:,1]       => z1 via component-conditional PPF
+            u[:,2]       => z2 via component-conditional PPF
+
+        Note: the gradient of the detection efficiency w.r.t. xi is approximate
+        (zero contribution from samples that switch component as xi varies), but
+        the gradient w.r.t. sigma is exact for the Gaussian-component samples.
+
+        Parameters
+        ----------
+        u      : shape (N_samp, 3)
+        params : dict
+
+        Returns
+        -------
+        dict {cos_tilt_1: ..., cos_tilt_2: ...}  each shape (N_samp,)
+        """
+        xi    = params[self.hyper_var_names[0]]
+        sigma = params[self.hyper_var_names[1]]
+
+        gaussian_comp = u[:, 0] < xi   # bool (N_samp,)
+
+        # Truncated-normal PPF: mu=1, sigma=sigma, support [a, b]
+        alpha  = (self.a - 1.0) / sigma
+        beta   = (self.b - 1.0) / sigma
+        p_low  = jax.scipy.stats.norm.cdf(alpha)
+        p_high = jax.scipy.stats.norm.cdf(beta)
+
+        def tn_ppf(u_val):
+            return 1.0 + sigma * jax.scipy.special.ndtri(p_low + u_val * (p_high - p_low))
+
+        z1 = jnp.where(gaussian_comp, tn_ppf(u[:, 1]), self.a + (self.b - self.a) * u[:, 1])
+        z2 = jnp.where(gaussian_comp, tn_ppf(u[:, 2]), self.a + (self.b - self.a) * u[:, 2])
+        return {self.var_names[0]: z1, self.var_names[1]: z2}
 
 
 class GaussianIsotropicSpinOrientationsIIDWithMinimum(SampledPopulationModel, SpinPopulationModel):
@@ -214,7 +265,7 @@ def sample_beta(alpha, beta, amax, size=1):
     return scaled_samples
 
 
-class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
+class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel, InvertiblePopulationModel):
     r"""
     Mixture of gaussian and isotropic distribution over spin orientations.
     Performs a monte carlo estimate of the population likelihood. 
@@ -270,4 +321,46 @@ class BetaSpinMagnitudeIID(SampledPopulationModel, SpinPopulationModel):
         chi_1 = sample_beta(alpha_chi, beta_chi, amax, size=oversample);
         chi_2 = sample_beta(alpha_chi, beta_chi, amax, size=oversample);
         return pd.DataFrame({self.var_names[0] : chi_1, self.var_names[1] : chi_2})
+
+    def ppf(self, u, params, n_grid=500):
+        """
+        Grid-based inverse CDF for a scaled Beta distribution.
+
+        For Chi ~ Beta(alpha, beta) on [0, amax] the PDF is evaluated on a
+        dense grid, the CDF is built via cumulative trapezoid, and inverted
+        with jnp.interp.  chi_1 and chi_2 are i.i.d., so u[:,0] and u[:,1]
+        are used against the same CDF independently.
+
+        Differentiable w.r.t. mu_chi / sigma_chi through the CDF grid values.
+
+        Parameters
+        ----------
+        u      : shape (N_samp, 2)  -- u[:,0] for chi_1, u[:,1] for chi_2
+        params : dict
+        n_grid : int  -- number of grid points (default 500)
+
+        Returns
+        -------
+        dict {a_1: ..., a_2: ...}  each shape (N_samp,)
+        """
+        amax = params.get(self.hyper_var_names[2], 1)
+        alpha_chi, beta_chi, amax = self.converter(
+            params[self.hyper_var_names[0]], params[self.hyper_var_names[1]], amax)
+
+        # Avoid evaluating at the exact boundaries 0 and amax: when alpha < 1
+        # or beta < 1 the Beta PDF diverges there, turning p_chi[0] into inf
+        # and corrupting the cumulative sum.  Interior midpoints are safe.
+        chi_grid = jnp.linspace(amax / (2 * n_grid), amax * (1 - 1 / (2 * n_grid)), n_grid)
+        p_chi = beta(chi_grid, alpha_chi, beta_chi, scale=amax)
+
+        dchi = jnp.diff(chi_grid)
+        cdf = jnp.concatenate([
+            jnp.array([0.0]),
+            jnp.cumsum((p_chi[:-1] + p_chi[1:]) * 0.5 * dchi)
+        ])
+        cdf = cdf / jnp.clip(cdf[-1], 1e-30)
+
+        chi_1 = jnp.interp(u[:, 0], cdf, chi_grid)
+        chi_2 = jnp.interp(u[:, 1], cdf, chi_grid)
+        return {self.var_names[0]: chi_1, self.var_names[1]: chi_2}
 

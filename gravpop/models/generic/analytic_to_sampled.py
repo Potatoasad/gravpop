@@ -1,7 +1,70 @@
 from .abstract import *
 import numpy as np
+import jax
 import jax.numpy as jnp
 import pandas as pd
+
+
+# ── Differentiable mixture selection ────────────────────────────────────────
+#
+# Problem: jnp.where(comp, out_0, out_1) correctly selects samples per
+# component, but d(where)/d(xi) = 0 because comp = u < xi is a Heaviside.
+#
+# True gradient by the distributional (density-ratio) argument:
+#   d/dxi  E_{mixture}[f] = E_{comp0}[f] - E_{comp1}[f]
+#
+# Implemented via custom_vjp: the forward pass is correct (exact joint
+# samples); the backward pass for xi uses the distributional gradient
+#   g_xi = sum_i  g_i · (out_0_i - out_1_i)
+# which is an unbiased Monte Carlo estimate of E_0[f] - E_1[f] when g_i is
+# the upstream gradient d(loss)/d(theta_i).
+#
+# Gradients w.r.t. out_0 and out_1 (→ each component's hyperparameters)
+# are routed through the correct branch via the comp mask.
+#
+@jax.custom_vjp
+def _mixture_select(out_0, out_1, comp, xi):
+    """
+    Per-sample selection from two pre-computed component outputs.
+
+    Parameters
+    ----------
+    out_0 : (N_samp, D) -- samples from component 0
+    out_1 : (N_samp, D) -- samples from component 1
+    comp  : (N_samp,) bool -- True  → pick out_0
+    xi    : scalar -- mixture weight (passed so its gradient is tracked)
+
+    Returns
+    -------
+    (N_samp, D) -- selected samples
+    """
+    return jnp.where(comp[:, None], out_0, out_1)
+
+def _mixture_select_fwd(out_0, out_1, comp, xi):
+    selected = _mixture_select(out_0, out_1, comp, xi)
+    return selected, (out_0, out_1, comp)
+
+def _mixture_select_bwd(res, g):
+    out_0, out_1, comp = res
+    c = comp[:, None].astype(g.dtype)          # (N, 1) float mask
+
+    # Gradient w.r.t. out_0: only the comp=True rows contributed
+    g_out_0 = g * c
+
+    # Gradient w.r.t. out_1: only the comp=False rows contributed
+    g_out_1 = g * (1.0 - c)
+
+    # Gradient w.r.t. comp: discrete, not differentiable
+    g_comp = jnp.zeros_like(comp, dtype=g.dtype)
+
+    # Gradient w.r.t. xi: distributional gradient
+    #   d/dxi E_mix[f] = E_0[f] - E_1[f]
+    #   ≈ (1/N) sum_i  g_i · (out_0_i - out_1_i)   (Monte Carlo estimate)
+    g_xi = jnp.sum(g * (out_0 - out_1))
+
+    return g_out_0, g_out_1, g_comp, g_xi
+
+_mixture_select.defvjp(_mixture_select_fwd, _mixture_select_bwd)
 
 def make_list_if_not(x):
     if not isinstance(x, list):
@@ -123,25 +186,27 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel, InvertiblePopulati
 
     def ppf(self, u, params):
         """
-        Generic PPF for a 2-component mixture.
+        Generic PPF for a 2-component mixture with exact xi gradient.
 
         Draw layout:
-            u[:, 0]          -- component selector: < mixture_weight → model[0]
-            u[:, 1:]         -- inner draws, passed to BOTH model ppfs
+            u[:, 0]    component selector — u[:,0] < xi  →  model[0]
+            u[:, 1:]   inner draws, passed to BOTH component ppfs
 
-        Both branches are evaluated for every sample (JAX traces both paths);
-        jnp.where then picks the right value per sample.  The inner draws are
-        reused across branches, which is valid because exactly one branch
-        contributes to the final output for each sample.
+        Both component ppfs are evaluated for every sample (JAX traces both
+        paths) and _mixture_select picks the correct one per sample.  The
+        inner draws are reused across branches — valid because exactly one
+        branch contributes per sample.
 
-        This correctly preserves the joint distribution across all var_names
-        within each component: samples inside a component are drawn jointly
-        from that component's ppf, not from independent marginals.
+        Joint accuracy: samples within each component are drawn jointly from
+        that component's ppf, preserving the within-component joint structure
+        (no independent-marginal approximation).
 
-        Note: the gradient w.r.t. the mixture weight flows through
-        jnp.where's two branches but not through the discrete switching
-        boundary (zero-measure event).  Gradients w.r.t. all other
-        hyperparameters are exact.
+        Gradient w.r.t. xi: provided by _mixture_select's custom_vjp using
+        the distributional gradient  g_xi = sum_i g_i · (out_0_i - out_1_i),
+        which is a Monte Carlo estimate of  d/dxi E[f] = E_0[f] - E_1[f].
+
+        Gradient w.r.t. all other params: exact — routed through the active
+        component via the comp mask in _mixture_select's custom_vjp.
 
         Parameters
         ----------
@@ -151,22 +216,24 @@ class Mixture2D(AnalyticPopulationModel, SpinPopulationModel, InvertiblePopulati
         -------
         dict {var_name: array of shape (N_samp,)}
         """
-        import jax.numpy as jnp
-        xi   = params[self.mixture_hyper_var_name]
-        comp = u[:, 0] < xi           # True → model[0], False → model[1]
+        xi      = params[self.mixture_hyper_var_name]
+        comp    = u[:, 0] < xi        # True → model[0]
         u_inner = u[:, 1:]            # shared inner draws
 
         n0, n1 = self.models[0].n_draws, self.models[1].n_draws
         u0 = u_inner[:, 0] if n0 == 1 else u_inner[:, :n0]
         u1 = u_inner[:, 0] if n1 == 1 else u_inner[:, :n1]
 
-        out_0 = self.models[0].ppf(u0, params)
-        out_1 = self.models[1].ppf(u1, params)
+        out_0 = self.models[0].ppf(u0, params)   # {var: (N,)}
+        out_1 = self.models[1].ppf(u1, params)   # {var: (N,)}
 
-        return {
-            var: jnp.where(comp, out_0[var], out_1[var])
-            for var in self.var_names
-        }
+        # Stack vars into (N, D) so _mixture_select operates on one array
+        out_0_arr = jnp.stack([out_0[v] for v in self.var_names], axis=-1)
+        out_1_arr = jnp.stack([out_1[v] for v in self.var_names], axis=-1)
+
+        selected = _mixture_select(out_0_arr, out_1_arr, comp, xi)
+
+        return {v: selected[:, i] for i, v in enumerate(self.var_names)}
 
 class SampledFromAnalytic(SampledPopulationModel):
     def __init__(self, analytic_model):
